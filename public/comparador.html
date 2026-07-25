@@ -628,7 +628,7 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
       <label>Compras / Aquisições anuais (R$)</label>
       <input type="text" id="comprasInput" placeholder="Ex: 500.000,00" oninput="parseComprasInput()"
         style="font-size:15px;font-weight:600">
-      <span style="font-size:10px;color:var(--text-light);margin-top:2px">Usado para créditos CBS, ICMS e IPI</span>
+      <span id="comprasHint" style="font-size:10px;color:var(--text-light);margin-top:2px">Usado para créditos CBS, ICMS e IPI</span>
     </div>
   </div>
   <div style="display:none" id="revTableWrapper">
@@ -658,8 +658,10 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
   </div>
   <div class="form-grid" style="padding-top:0">
     <div class="field"><label>Alíquota ISS (%)</label><input id="aliquotaISS" type="number" value="2.5" step="0.1" oninput="calc()"></div>
+    <div id="lpIcmsIpiFields">
     <div class="field"><label>Alíquota ICMS (%)</label><input id="aliquotaICMS" type="number" value="0" step="0.1" oninput="calc()"></div>
     <div class="field"><label>Alíquota IPI (%)</label><input id="aliquotaIPI" type="number" value="0" step="0.1" oninput="calc()"></div>
+    </div>
     <div class="field"><label>Presunção IRPJ (%)</label><input id="presIRPJ" type="number" value="32" oninput="calc()"></div>
     <div class="field"><label>Presunção CSLL (%)</label><input id="presCSLL" type="number" value="32" oninput="calc()"></div>
     <div class="field full"><label>% Serviços no Faturamento (LP)</label><input id="segregacao" type="number" value="" placeholder="100 = só serviço, 0 = só mercadoria" oninput="calc()"></div>
@@ -1391,6 +1393,14 @@ function getAnexoSN(cnae,classe,fatorR) {
 }
 
 function calc() {
+  // Mostra/esconde ICMS e IPI conforme regime
+  const regime = document.getElementById('regime').value;
+  const isSN = regime === 'Simples Nacional';
+  document.getElementById('lpIcmsIpiFields').style.display = isSN ? 'none' : '';
+  document.getElementById('comprasHint').textContent = isSN
+    ? 'Usado para créditos CBS'
+    : 'Usado para créditos CBS, ICMS e IPI';
+
   // Receita: usa RBT12 do input simplificado
   const rbtInput = document.getElementById('rbt12Input').value;
   const rbt12 = brToNum(rbtInput);
