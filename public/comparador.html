@@ -593,18 +593,18 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
     <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--primary)">1. Identificação da Empresa</h3>
   </div>
   <div class="form-grid">
-    <div class="field"><label>Razão Social</label><input id="razao" value="BRIDGEWISE SOLUTIONS LTDA" oninput="calc()"></div>
-    <div class="field"><label>Nome Fantasia</label><input id="fantasia" value="BRIDGEWISE SOLUTIONS" oninput="calc()"></div>
-    <div class="field"><label>CNPJ</label><input id="cnpj" value="59.088.588/0001-20" oninput="calc()"></div>
+    <div class="field"><label>Razão Social</label><input id="razao" value="" oninput="calc()"></div>
+    <div class="field"><label>Nome Fantasia</label><input id="fantasia" value="" oninput="calc()"></div>
+    <div class="field"><label>CNPJ</label><input id="cnpj" value="" oninput="calc()"></div>
     <div class="field"><label>CNAE Principal</label>
       <div class="input-group">
-        <input id="cnae" value="7739-0/99" oninput="calc()" placeholder="Ex: 7739-0/99">
+        <input id="cnae" value="" oninput="calc()" placeholder="Ex: 7739-0/99">
         <button class="btn btn-sm btn-secondary" onclick="showTab('cnae');setTimeout(()=>document.getElementById('cnaeSearchInput')?.focus(),200)">Buscar</button>
       </div>
     </div>
-    <div class="field full"><label>Atividade Principal</label><input id="atividade" value="Locação de bens móveis e prestação de serviços" oninput="calc()"></div>
-    <div class="field"><label>Município</label><input id="municipio" value="São Paulo" oninput="calc()"></div>
-    <div class="field"><label>Estado</label><input id="estado" value="SP" oninput="calc()"></div>
+    <div class="field full"><label>Atividade Principal</label><input id="atividade" value="" oninput="calc()"></div>
+    <div class="field"><label>Município</label><input id="municipio" value="" oninput="calc()"></div>
+    <div class="field"><label>Estado</label><input id="estado" value="" oninput="calc()"></div>
     <div class="field"><label>Regime Atual</label><select id="regime" onchange="calc()"><option>Simples Nacional</option><option>Lucro Presumido</option><option>Lucro Real</option></select></div>
     <div class="field"><label>Tipo de Atividade (LP)</label>
       <select id="tipoAtivLP" onchange="calc()">
@@ -640,8 +640,8 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
     <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--primary)">3. Folha de Pagamento</h3>
   </div>
   <div class="form-grid" style="padding-top:0">
-    <div class="field"><label>Salários (média mensal)</label><input id="salarios" type="number" value="4500" oninput="calc()"></div>
-    <div class="field"><label>Pró-labore (média mensal)</label><input id="prolabore" type="number" value="1500" oninput="calc()"></div>
+    <div class="field"><label>Salários (média mensal)</label><input id="salarios" type="number" value="" oninput="calc()"></div>
+    <div class="field"><label>Pró-labore (média mensal)</label><input id="prolabore" type="number" value="" oninput="calc()"></div>
     <div class="field"><label>INSS Patronal (%)</label><input id="inss" type="number" value="20" oninput="calc()"></div>
     <div class="field"><label>RAT (%)</label><input id="rat" type="number" value="3" oninput="calc()"></div>
     <div class="field"><label>Terceiros (%)</label><input id="terceiros" type="number" value="3.3" oninput="calc()"></div>
@@ -658,7 +658,7 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
     <div class="field"><label>Presunção CSLL (%)</label><input id="presCSLL" type="number" value="32" oninput="calc()"></div>
     <div class="field"><label>Alíquota ISS (%)</label><input id="aliquotaISS" type="number" value="2.5" placeholder="ex: 2,5 (Indaiatuba)" oninput="calc()"></div>
     <div class="field"><label>Alíquota ICMS (%)</label><input id="aliquotaICMS" type="number" value="0" oninput="calc()"></div>
-    <div class="field full"><label>% Serviços para LP</label><input id="segregacao" type="number" value="100" oninput="calc()"></div>
+    <div class="field full"><label>% Serviços para LP</label><input id="segregacao" type="number" value="" oninput="calc()"></div>
   </div>
 
   <div style="padding:0 32px">
@@ -957,8 +957,7 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
 // ===== MONTH NAMES =====
 const MONTHS = ['Jun/2025','Jul/2025','Ago/2025','Set/2025','Out/2025','Nov/2025',
                 'Dez/2025','Jan/2026','Fev/2026','Mar/2026','Abr/2026','Mai/2026'];
-const DEFAULT_REVS = [138191.50,103191.50,107186.38,141401.58,91401.58,109450.08,
-                      85000.00,35000.00,103256.50,36333.50,36333.50,138981.84];
+const DEFAULT_REVS = [0,0,0,0,0,0,0,0,0,0,0,0];
 const PRES = {
   servicos: { irpj: 0.32, csll: 0.32 },
   comercio: { irpj: 0.08, csll: 0.12 },

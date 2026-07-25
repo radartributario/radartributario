@@ -204,13 +204,13 @@ export default function DashboardPage() {
                       <span className="flex items-center gap-1.5">
                         <span
                           className={`w-2 h-2 rounded-full ${
-                            cnpjData.opcao_pelo_simples_nacional
+                            cnpjData.opcao_pelo_simples
                               ? "bg-green-500"
                               : "bg-slate-400"
                           }`}
                         />
                         <span>
-                          {cnpjData.opcao_pelo_simples_nacional
+                          {cnpjData.opcao_pelo_simples
                             ? "Optante Simples Nacional"
                             : "Não optante Simples Nacional"}
                         </span>
@@ -218,16 +218,16 @@ export default function DashboardPage() {
                       <span className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-blue-500" />
                         <span>
-                          {cnpjData.opcao_pelo_simples_nacional
+                          {cnpjData.opcao_pelo_simples
                             ? "Simples Nacional"
                             : "Lucro Presumido / Real"}
                         </span>
                       </span>
                     </div>
-                    {(cnpjData.data_opcao_pelo_simples_nacional as string | null) && (
+                    {(cnpjData.data_opcao_pelo_simples as string | null) && (
                       <p className="text-xs text-slate-500">
                         Data opção SN:{" "}
-                        {cnpjData.data_opcao_pelo_simples_nacional as string}
+                        {cnpjData.data_opcao_pelo_simples as string}
                       </p>
                     )}
                     <div className="pt-2">
@@ -260,7 +260,7 @@ export default function DashboardPage() {
                     <div className="text-right text-xs text-slate-400">
                       <div>{(cnpjData.razao_social as string) || ""}</div>
                       <div>
-                        {cnpjData.opcao_pelo_simples_nacional
+                        {cnpjData.opcao_pelo_simples
                           ? "Simples Nacional"
                           : "LP / Real"}
                       </div>
