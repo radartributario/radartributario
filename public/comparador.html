@@ -602,7 +602,7 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
     <div class="field"><label>Estado</label><input id="estado" value="" oninput="calc()"></div>
     <div class="field"><label>Regime Atual</label><select id="regime" onchange="calc()"><option>Simples Nacional</option><option>Lucro Presumido</option><option>Lucro Real</option></select></div>
     <div class="field"><label>Tipo de Atividade (LP)</label>
-      <select id="tipoAtivLP" onchange="calc()">
+      <select id="tipoAtivLP" onchange="delete document.getElementById('presIRPJ').dataset.userEdited; delete document.getElementById('presCSLL').dataset.userEdited; calc()">
         <option value="servicos">Serviços em Geral</option>
         <option value="comercio">Comércio</option>
         <option value="industria">Indústria</option>
@@ -662,8 +662,8 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
     <div class="field"><label>Alíquota ICMS (%)</label><input id="aliquotaICMS" type="number" value="0" step="0.1" oninput="calc()"></div>
     <div class="field"><label>Alíquota IPI (%)</label><input id="aliquotaIPI" type="number" value="0" step="0.1" oninput="calc()"></div>
     </div>
-    <div class="field"><label>Presunção IRPJ (%)</label><input id="presIRPJ" type="number" value="32" oninput="calc()"></div>
-    <div class="field"><label>Presunção CSLL (%)</label><input id="presCSLL" type="number" value="32" oninput="calc()"></div>
+    <div class="field"><label>Presunção IRPJ (%)</label><input id="presIRPJ" type="number" value="32" oninput="calc(); this.dataset.userEdited='1'" onfocus="this.dataset.userEdited='1'"></div>
+    <div class="field"><label>Presunção CSLL (%)</label><input id="presCSLL" type="number" value="32" oninput="calc(); this.dataset.userEdited='1'" onfocus="this.dataset.userEdited='1'"></div>
     <div class="field full"><label>% Serviços no Faturamento (LP)</label><input id="segregacao" type="number" value="" placeholder="100 = só serviço, 0 = só mercadoria" oninput="calc()"></div>
   </div>
 
@@ -1297,7 +1297,20 @@ function brToNum(s) {
 function fmtNum(v) { return fmt(v); }
 
 function parseRbt12Input() {
-  const val = brToNum(document.getElementById('rbt12Input').value);
+  // Formata o campo enquanto o usuário digita (mantém cursor)
+  const el = document.getElementById('rbt12Input');
+  const raw = el.value.replace(/[^\d,]/g, '').replace(',', '.');
+  const num = parseFloat(raw);
+  if (!isNaN(num) && raw.length > 0) {
+    const [intPart, decPart] = num.toFixed(2).split('.');
+    const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + (decPart || '00');
+    if (el.value !== formatted) {
+      const pos = el.selectionStart;
+      el.value = formatted;
+      try { el.setSelectionRange(pos, pos); } catch(e) {}
+    }
+  }
+  const val = num || 0;
   if (val > 0) {
     const perMonth = Math.round(val / 12);
     for (let i = 0; i < 12; i++) {
@@ -1309,6 +1322,19 @@ function parseRbt12Input() {
 }
 
 function parseComprasInput() {
+  // Formata o campo enquanto o usuário digita
+  const el = document.getElementById('comprasInput');
+  const raw = el.value.replace(/[^\d,]/g, '').replace(',', '.');
+  const num = parseFloat(raw);
+  if (!isNaN(num) && raw.length > 0) {
+    const [intPart, decPart] = num.toFixed(2).split('.');
+    const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + (decPart || '00');
+    if (el.value !== formatted) {
+      const pos = el.selectionStart;
+      el.value = formatted;
+      try { el.setSelectionRange(pos, pos); } catch(e) {}
+    }
+  }
   calc();
 }
 
@@ -1470,8 +1496,14 @@ function calc() {
   const snMedia=snTotal/12;
 
   const tipoAtiv=document.getElementById('tipoAtivLP').value;
-  const presIRPJ=(parseFloat(document.getElementById('presIRPJ').value)||32)/100;
-  const presCSLL=(parseFloat(document.getElementById('presCSLL').value)||32)/100;
+  // Auto-preenche presunção conforme tipo de atividade
+  const presDefault=PRES[tipoAtiv]||{irpj:0.32,csll:0.32};
+  const presIRPJEl=document.getElementById('presIRPJ');
+  const presCSLLEl=document.getElementById('presCSLL');
+  if (!presIRPJEl.dataset.userEdited) { presIRPJEl.value=presDefault.irpj*100; presIRPJEl.dataset.auto='1'; }
+  if (!presCSLLEl.dataset.userEdited) { presCSLLEl.value=presDefault.csll*100; presCSLLEl.dataset.auto='1'; }
+  const presIRPJ=(parseFloat(presIRPJEl.value)||32)/100;
+  const presCSLL=(parseFloat(presCSLLEl.value)||32)/100;
   const issPct=(parseFloat(document.getElementById('aliquotaISS').value)||0)/100;
   const icmsPct=(parseFloat(document.getElementById('aliquotaICMS').value)||0)/100;
   const ipiPct=(parseFloat(document.getElementById('aliquotaIPI').value)||0)/100;
@@ -1784,7 +1816,7 @@ function scenarioApplyToDashboard() {
   const folha=parseFloat(document.getElementById('scnFolha').value);
   const iss=parseFloat(document.getElementById('scnISS').value);
   const cnaeScn=document.getElementById('scnCNAE').value.trim();
-  if (fat) document.getElementById('rbt12Input').value=fat.toString();
+  if (fat) { document.getElementById('rbt12Input').value=fat.toString(); parseRbt12Input(); }
   if (folha) document.getElementById('salarios').value=folha;
   if (iss) document.getElementById('aliquotaISS').value=iss;
   if (cnaeScn) document.getElementById('cnae').value=cnaeScn;
@@ -2037,8 +2069,10 @@ function carregarDados() {
     document.getElementById('rat').value=data.rat||3;
     document.getElementById('terceiros').value=data.terceiros||3.3;
     document.getElementById('fgts').value=data.fgts||8;
-    document.getElementById('presIRPJ').value=data.presIRPJ||32;
-    document.getElementById('presCSLL').value=data.presCSLL||32;
+    if (data.presIRPJ) { document.getElementById('presIRPJ').value=data.presIRPJ; document.getElementById('presIRPJ').dataset.userEdited='1'; }
+    else { document.getElementById('presIRPJ').value=32; delete document.getElementById('presIRPJ').dataset.userEdited; }
+    if (data.presCSLL) { document.getElementById('presCSLL').value=data.presCSLL; document.getElementById('presCSLL').dataset.userEdited='1'; }
+    else { document.getElementById('presCSLL').value=32; delete document.getElementById('presCSLL').dataset.userEdited; }
     document.getElementById('aliquotaISS').value=data.aliquotaISS||2.5;
     document.getElementById('aliquotaICMS').value=data.aliquotaICMS||0;
     document.getElementById('aliquotaIPI').value=data.aliquotaIPI||0;
