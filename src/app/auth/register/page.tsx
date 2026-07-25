@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { createBrowserClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -18,42 +20,58 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
 
-    const supabase = createBrowserClient();
-    const { data, error: err } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: name } },
-    });
-
-    if (err) {
-      setError(err.message);
-      setLoading(false);
-      return;
-    }
-
-    if (data?.user?.identities?.length === 0) {
-      setError("Este email já possui cadastro. Faça login.");
-      setLoading(false);
-      return;
-    }
-
-    if (data?.user?.confirmation_sent_at) {
-      const { error: loginErr } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          data: { full_name: name },
+        }),
       });
-      if (!loginErr) {
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.msg?.includes("already registered")) {
+          setError("Este email já possui cadastro. Faça login.");
+        } else {
+          setError(data.msg || "Erro ao cadastrar");
+        }
+        setLoading(false);
+        return;
+      }
+
+      const loginRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const loginData = await loginRes.json();
+
+      if (loginRes.ok) {
+        localStorage.setItem("sb-access-token", loginData.access_token);
+        localStorage.setItem("sb-refresh-token", loginData.refresh_token);
+        document.cookie = `sb-access-token=${loginData.access_token}; path=/; max-age=3600; SameSite=Lax`;
         router.push("/dashboard");
         router.refresh();
         return;
       }
-      setError("Cadastro realizado! Verifique seu email para confirmar.");
-      setLoading(false);
-      return;
-    }
 
-    router.push("/dashboard");
-    router.refresh();
+      setError("Cadastro realizado! Faça login.");
+      setLoading(false);
+    } catch {
+      setError("Erro de conexão com o servidor");
+      setLoading(false);
+    }
   };
 
   return (

@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
-import Link from "next/link";
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<{ email: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [cnpj, setCnpj] = useState("");
   const [cnpjData, setCnpjData] = useState<Record<string, unknown> | null>(null);
@@ -17,17 +16,38 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const supabase = createBrowserClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) router.push("/auth/login");
-      else setUser(user);
-      setLoading(false);
-    });
+    const token = localStorage.getItem("sb-access-token");
+    if (!token) {
+      router.push("/auth/login");
+      return;
+    }
+    fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        "apikey": process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        "Authorization": `Bearer ${token}`,
+      },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.id) {
+          setUser({ email: data.email });
+        } else {
+          localStorage.removeItem("sb-access-token");
+          localStorage.removeItem("sb-refresh-token");
+          router.push("/auth/login");
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+        router.push("/auth/login");
+      });
   }, [router]);
 
-  const handleLogout = async () => {
-    const supabase = createBrowserClient();
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    localStorage.removeItem("sb-access-token");
+    localStorage.removeItem("sb-refresh-token");
+    document.cookie = "sb-access-token=; path=/; max-age=0";
     router.push("/auth/login");
     router.refresh();
   };
@@ -57,7 +77,7 @@ export default function DashboardPage() {
 
   const formatCnpj = (v: string) => {
     const d = v.replace(/\D/g, "").slice(0, 14);
-    return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+    return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4/$5");
   };
 
   if (loading) {
@@ -73,11 +93,10 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0">
         <div className="h-16 flex items-center gap-3 px-5 border-b border-slate-100">
           <div className="w-8 h-8 rounded-lg bg-blue-700 flex items-center justify-center text-white text-sm font-bold">
-            RT
+            CT
           </div>
           <span className="font-bold text-slate-800">Compare Tributo</span>
         </div>
@@ -120,7 +139,6 @@ export default function DashboardPage() {
         </div>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 flex flex-col min-w-0">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
           <h1 className="text-lg font-semibold text-slate-800">

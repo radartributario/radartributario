@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { createBrowserClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -17,20 +19,34 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const supabase = createBrowserClient();
-    const { error: err } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (err) {
-      setError(err.message);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.msg || data.error_description || "Erro ao entrar");
+        setLoading(false);
+        return;
+      }
+
+      localStorage.setItem("sb-access-token", data.access_token);
+      localStorage.setItem("sb-refresh-token", data.refresh_token);
+      document.cookie = `sb-access-token=${data.access_token}; path=/; max-age=3600; SameSite=Lax`;
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("Erro de conexão com o servidor");
       setLoading(false);
-      return;
     }
-
-    router.push("/dashboard");
-    router.refresh();
   };
 
   return (
