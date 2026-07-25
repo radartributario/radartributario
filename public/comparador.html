@@ -1297,20 +1297,7 @@ function brToNum(s) {
 function fmtNum(v) { return fmt(v); }
 
 function parseRbt12Input() {
-  // Formata o campo enquanto o usuário digita (mantém cursor)
-  const el = document.getElementById('rbt12Input');
-  const raw = el.value.replace(/[^\d,]/g, '').replace(',', '.');
-  const num = parseFloat(raw);
-  if (!isNaN(num) && raw.length > 0) {
-    const [intPart, decPart] = num.toFixed(2).split('.');
-    const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + (decPart || '00');
-    if (el.value !== formatted) {
-      const pos = el.selectionStart;
-      el.value = formatted;
-      try { el.setSelectionRange(pos, pos); } catch(e) {}
-    }
-  }
-  const val = num || 0;
+  const val = brToNum(document.getElementById('rbt12Input').value);
   if (val > 0) {
     const perMonth = Math.round(val / 12);
     for (let i = 0; i < 12; i++) {
@@ -1322,19 +1309,6 @@ function parseRbt12Input() {
 }
 
 function parseComprasInput() {
-  // Formata o campo enquanto o usuário digita
-  const el = document.getElementById('comprasInput');
-  const raw = el.value.replace(/[^\d,]/g, '').replace(',', '.');
-  const num = parseFloat(raw);
-  if (!isNaN(num) && raw.length > 0) {
-    const [intPart, decPart] = num.toFixed(2).split('.');
-    const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + (decPart || '00');
-    if (el.value !== formatted) {
-      const pos = el.selectionStart;
-      el.value = formatted;
-      try { el.setSelectionRange(pos, pos); } catch(e) {}
-    }
-  }
   calc();
 }
 
