@@ -1483,7 +1483,6 @@ function calc() {
   const ipiPct=(parseFloat(document.getElementById('aliquotaIPI').value)||0)/100;
   const segregPct=(parseFloat(document.getElementById('segregacao').value)||100)/100;
   const comprasAnual = brToNum(document.getElementById('comprasInput').value);
-  const presDefault=PRES[tipoAtiv]||{irpj:0.32,csll:0.32};
   const presIRPJ_ef=presIRPJ||presDefault.irpj;
   const presCSLL_ef=presCSLL||presDefault.csll;
   const receitaLP=rbt12*segregPct+revData.reduce((a,v)=>a+v*(1-segregPct),0);
