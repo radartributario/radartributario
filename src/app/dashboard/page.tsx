@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-
 export default function DashboardPage() {
   const [user, setUser] = useState<{ email: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -16,24 +14,12 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem("sb-access-token");
-    if (!token) {
-      router.push("/auth/login");
-      return;
-    }
-    fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: {
-        "apikey": process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        "Authorization": `Bearer ${token}`,
-      },
-    })
+    fetch("/api/auth/me")
       .then((r) => r.json())
       .then((data) => {
-        if (data.id) {
+        if (data.email) {
           setUser({ email: data.email });
         } else {
-          localStorage.removeItem("sb-access-token");
-          localStorage.removeItem("sb-refresh-token");
           router.push("/auth/login");
         }
         setLoading(false);
@@ -45,8 +31,6 @@ export default function DashboardPage() {
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem("sb-access-token");
-    localStorage.removeItem("sb-refresh-token");
     document.cookie = "sb-access-token=; path=/; max-age=0";
     router.push("/auth/login");
     router.refresh();
