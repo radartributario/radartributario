@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase";
+import { createBrowserClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
@@ -17,7 +17,7 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const supabase = createClient();
+    const supabase = createBrowserClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) router.push("/auth/login");
       else setUser(user);
@@ -26,7 +26,7 @@ export default function DashboardPage() {
   }, [router]);
 
   const handleLogout = async () => {
-    const supabase = createClient();
+    const supabase = createBrowserClient();
     await supabase.auth.signOut();
     router.push("/auth/login");
     router.refresh();
