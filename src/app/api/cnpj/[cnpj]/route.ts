@@ -11,7 +11,9 @@ export async function GET(
   }
   try {
     const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${clean}`, {
-      next: { revalidate: 86400 },
+      headers: {
+        "User-Agent": "CompareTributo/1.0",
+      },
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
