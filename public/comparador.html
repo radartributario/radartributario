@@ -436,8 +436,10 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
           </div>
           <div class="group-detail open" id="lpMunicipalDetail">
             <div class="row"><span class="l">ISS</span><span class="v" id="lpIss">R$ 0,00</span><span class="pct" id="lpIssp">0,00%</span></div>
+            <div id="lpIcmsIpiRows">
             <div class="row"><span class="l">ICMS</span><span class="v" id="lpIcms">R$ 0,00</span><span class="pct" id="lpIcmsp">0,00%</span></div>
             <div class="row"><span class="l">IPI</span><span class="v" id="lpIpi">R$ 0,00</span><span class="pct" id="lpIpip">0,00%</span></div>
+            </div>
           </div>
         </div>
         <!-- Encargos -->
@@ -621,12 +623,12 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
   <div class="form-grid" style="padding-top:0">
     <div class="field">
       <label>RBT12 (Receita Bruta Total 12 meses)</label>
-      <input type="text" id="rbt12Input" placeholder="Ex: 1.200.000,00" oninput="parseRbt12Input()"
+      <input type="text" id="rbt12Input" placeholder="Ex: 1.200.000,00" oninput="parseRbt12Input()" onblur="formatRbt12Input()"
         style="font-size:15px;font-weight:700;color:var(--primary)">
     </div>
     <div class="field">
       <label>Compras / Aquisições anuais (R$)</label>
-      <input type="text" id="comprasInput" placeholder="Ex: 500.000,00" oninput="parseComprasInput()"
+      <input type="text" id="comprasInput" placeholder="Ex: 500.000,00" oninput="parseComprasInput()" onblur="formatComprasInput()"
         style="font-size:15px;font-weight:600">
       <span id="comprasHint" style="font-size:10px;color:var(--text-light);margin-top:2px">Usado para créditos CBS, ICMS e IPI</span>
     </div>
@@ -1297,15 +1299,7 @@ function brToNum(s) {
 function fmtNum(v) { return fmt(v); }
 
 function parseRbt12Input() {
-  const el = document.getElementById('rbt12Input');
-  const raw = el.value.replace(/[^\d,]/g, '').replace(',', '.');
-  const num = parseFloat(raw);
-  if (!isNaN(num) && raw.length > 0) {
-    const [intPart, decPart] = num.toFixed(2).split('.');
-    const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + (decPart || '00');
-    if (el.value !== formatted) { el.value = formatted; }
-  }
-  const val = num || 0;
+  const val = brToNum(document.getElementById('rbt12Input').value);
   if (val > 0) {
     const perMonth = Math.round(val / 12);
     for (let i = 0; i < 12; i++) {
@@ -1316,16 +1310,26 @@ function parseRbt12Input() {
   }
 }
 
-function parseComprasInput() {
-  const el = document.getElementById('comprasInput');
-  const raw = el.value.replace(/[^\d,]/g, '').replace(',', '.');
-  const num = parseFloat(raw);
-  if (!isNaN(num) && raw.length > 0) {
+function formatRbt12Input() {
+  const el = document.getElementById('rbt12Input');
+  const num = brToNum(el.value);
+  if (num > 0) {
     const [intPart, decPart] = num.toFixed(2).split('.');
-    const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + (decPart || '00');
-    if (el.value !== formatted) { el.value = formatted; }
+    el.value = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + (decPart || '00');
   }
+}
+
+function parseComprasInput() {
   calc();
+}
+
+function formatComprasInput() {
+  const el = document.getElementById('comprasInput');
+  const num = brToNum(el.value);
+  if (num > 0) {
+    const [intPart, decPart] = num.toFixed(2).split('.');
+    el.value = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + (decPart || '00');
+  }
 }
 
 function fmt(v) { const [i,d]=v.toFixed(2).split('.'); return i.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+d; }
@@ -1450,6 +1454,7 @@ function calc() {
   const cat_cnae=getCnaeCategoria(cnae);
   const showIcmsIpi = !isSN && (cat_cnae === 'comercio' || cat_cnae === 'industria');
   document.getElementById('lpIcmsIpiFields').style.display = showIcmsIpi ? '' : 'none';
+  document.getElementById('lpIcmsIpiRows').style.display = showIcmsIpi ? '' : 'none';
   const sujeitoFR=CNAE_FATOR_R.has(classe);
   const anexoSN=getAnexoSN(cnae,classe,fatorR);
   const anexoFR_el=document.getElementById('anexoFR');
@@ -2064,8 +2069,8 @@ function carregarDados() {
     document.getElementById('aliquotaICMS').value=data.aliquotaICMS||0;
     document.getElementById('aliquotaIPI').value=data.aliquotaIPI||0;
     document.getElementById('segregacao').value=data.segregacao||100;
-    if (data.rbt12) document.getElementById('rbt12Input').value=data.rbt12;
-    if (data.compras) document.getElementById('comprasInput').value=data.compras;
+    if (data.rbt12) { document.getElementById('rbt12Input').value=data.rbt12; formatRbt12Input(); }
+    if (data.compras) { document.getElementById('comprasInput').value=data.compras; formatComprasInput(); }
     parseRbt12Input();
     calc();
   } catch(e) { console.log('Erro ao carregar:',e); }
