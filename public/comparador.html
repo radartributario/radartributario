@@ -623,6 +623,14 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
   <div style="padding:0 32px">
     <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--primary)">2. Faturamento (últimos 12 meses)</h3>
   </div>
+  <div style="padding:0 32px 8px">
+    <div style="display:flex;align-items:center;gap:12px;background:var(--blue-bg);padding:10px 16px;border-radius:var(--radius-sm);border:1px solid #B8D4F0;margin-bottom:10px">
+      <label style="font-size:13px;font-weight:600;color:var(--blue);white-space:nowrap">RBT12 (Receita Bruta Total):</label>
+      <input type="number" id="rbt12Input" placeholder="Ex: 1200000" oninput="fillRevenueFromRbt12()"
+        style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-weight:600;font-family:var(--font);max-width:250px">
+      <span style="font-size:11px;color:var(--text-light)">Preenche automaticamente os 12 meses</span>
+    </div>
+  </div>
   <div style="padding:0 32px 12px">
     <table class="rev-table">
       <thead><tr><th style="width:90px">Mês</th><th>Receita Serviços</th><th>Outras Receitas</th><th style="width:140px">Total</th></tr></thead>
@@ -1267,6 +1275,17 @@ function atualizarRev(i) {
   const t=s+o;
   document.getElementById('tot'+i).textContent=t.toFixed(2);
   revData[i]=t; calc();
+}
+
+function fillRevenueFromRbt12() {
+  const rbt = parseFloat(document.getElementById('rbt12Input').value) || 0;
+  if (rbt <= 0) return;
+  const perMonth = Math.round(rbt / 12);
+  for (let i = 0; i < 12; i++) {
+    document.getElementById('rev' + i).value = perMonth;
+    document.getElementById('out' + i).value = 0;
+  }
+  atualizarRev(0);
 }
 function fmt(v) { const [i,d]=v.toFixed(2).split('.'); return i.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+d; }
 function fmtMoeda(v) { return 'R$ '+fmt(v); }
