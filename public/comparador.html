@@ -1412,9 +1412,6 @@ function calc() {
   // Mostra/esconde ICMS e IPI: oculto no SN, mostrado apenas em LP comércio/indústria
   const regime = document.getElementById('regime').value;
   const isSN = regime === 'Simples Nacional';
-  const cat = getCnaeCategoria(cnae);
-  const showIcmsIpi = !isSN && (cat === 'comercio' || cat === 'industria');
-  document.getElementById('lpIcmsIpiFields').style.display = showIcmsIpi ? '' : 'none';
   document.getElementById('comprasHint').textContent = isSN
     ? 'Usado para créditos CBS'
     : 'Usado para créditos CBS, ICMS e IPI';
@@ -1450,6 +1447,9 @@ function calc() {
 
   const cnae=document.getElementById('cnae').value.trim();
   const classe=cnae.split('/')[0];
+  const cat_cnae=getCnaeCategoria(cnae);
+  const showIcmsIpi = !isSN && (cat_cnae === 'comercio' || cat_cnae === 'industria');
+  document.getElementById('lpIcmsIpiFields').style.display = showIcmsIpi ? '' : 'none';
   const sujeitoFR=CNAE_FATOR_R.has(classe);
   const anexoSN=getAnexoSN(cnae,classe,fatorR);
   const anexoFR_el=document.getElementById('anexoFR');
@@ -1715,8 +1715,8 @@ function calc() {
     const cbsT = window.getCbsTreatment ? window.getCbsTreatment(cnae) : {};
     if (cbsT.tipo === 'reduzida') alerts.push({type:'info',msg:'CBS: Alíquota reduzida para este CNAE (' + cbsT.desc + ') — ' + getCbsLegalBasis(cnae)});
     if (cbsT.tipo === 'zero') alerts.push({type:'success',msg:'CBS: Alíquota zero para este CNAE (' + cbsT.desc + ') — ' + getCbsLegalBasis(cnae)});
-    if (!isSN && cat === 'comercio') alerts.push({type:'info',msg:'ICMS aplicável (comércio) — verificar alíquota interestadual e substituição tributária'});
-    if (!isSN && cat === 'industria') alerts.push({type:'info',msg:'ICMS e IPI aplicáveis (indústria) — verificar créditos e substituição tributária'});
+    if (!isSN && cat_cnae === 'comercio') alerts.push({type:'info',msg:'ICMS aplicável (comércio) — verificar alíquota interestadual e substituição tributária'});
+    if (!isSN && cat_cnae === 'industria') alerts.push({type:'info',msg:'ICMS e IPI aplicáveis (indústria) — verificar créditos e substituição tributária'});
   }
   if (rbt12>4800000) alerts.push({type:'error',msg:'Receita acima do limite do SN (R$ 4,8M) — verificar sublimite'});
   if (sujeitoFR&&fatorR<0.28) alerts.push({type:'error',msg:'Fator R abaixo de 28% — sujeito a Anexo V (maior carga)'});
