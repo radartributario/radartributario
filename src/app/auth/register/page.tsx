@@ -19,7 +19,7 @@ export default function RegisterPage() {
     setError("");
 
     const supabase = createClient();
-    const { error: err } = await supabase.auth.signUp({
+    const { data, error: err } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: name } },
@@ -27,6 +27,27 @@ export default function RegisterPage() {
 
     if (err) {
       setError(err.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data?.user?.identities?.length === 0) {
+      setError("Este email já possui cadastro. Faça login.");
+      setLoading(false);
+      return;
+    }
+
+    if (data?.user?.confirmation_sent_at) {
+      const { error: loginErr } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (!loginErr) {
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+      setError("Cadastro realizado! Verifique seu email para confirmar.");
       setLoading(false);
       return;
     }
