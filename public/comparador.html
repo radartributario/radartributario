@@ -1951,7 +1951,7 @@ function calcularECarregar() { calc(); showTab('executivo'); }
 
 function compararComCBS() {
   calc();
-  const rbt = parseFloat(document.getElementById('rbt12').textContent.replace(/[^\d,]/g,'').replace(',','.')) || 0;
+  const rbt = brToNum(document.getElementById('rbt12Input').value) || 0;
   document.getElementById('refReceita').value = Math.round(rbt);
   document.getElementById('refAliqCbs').value = 8.8;
   calcReforma();
@@ -2219,7 +2219,7 @@ function exportPDF() {
 
 // ===== REFORMA SYNC =====
 function refSyncFromCalc() {
-  const rbt=document.getElementById('rbt12')?.textContent?.replace(/[^\d,]/g,'').replace(',','.')||'0';
+  const rbt = brToNum(document.getElementById('rbt12Input')?.value) || 0;
   const receitaEl=document.getElementById('refReceita');
   if (receitaEl&&!receitaEl.value) receitaEl.value=Math.round(parseFloat(rbt)||0).toString();
   calcReforma();
