@@ -437,6 +437,7 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
           <div class="group-detail open" id="lpMunicipalDetail">
             <div class="row"><span class="l">ISS</span><span class="v" id="lpIss">R$ 0,00</span><span class="pct" id="lpIssp">0,00%</span></div>
             <div class="row"><span class="l">ICMS</span><span class="v" id="lpIcms">R$ 0,00</span><span class="pct" id="lpIcmsp">0,00%</span></div>
+            <div class="row"><span class="l">IPI</span><span class="v" id="lpIpi">R$ 0,00</span><span class="pct" id="lpIpip">0,00%</span></div>
           </div>
         </div>
         <!-- Encargos -->
@@ -615,27 +616,27 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
   </div>
 
   <div style="padding:0 32px">
-    <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--primary)">2. Faturamento (últimos 12 meses)</h3>
+    <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--primary)">2. Faturamento e Compras</h3>
   </div>
-  <div style="padding:0 32px 8px">
-    <div style="display:flex;align-items:center;gap:12px;background:var(--blue-bg);padding:10px 16px;border-radius:var(--radius-sm);border:1px solid #B8D4F0;margin-bottom:10px">
-      <label style="font-size:13px;font-weight:600;color:var(--blue);white-space:nowrap">RBT12 (Receita Bruta Total):</label>
-      <input type="number" id="rbt12Input" placeholder="Ex: 1200000" oninput="fillRevenueFromRbt12()"
-        style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-weight:600;font-family:var(--font);max-width:250px">
-      <span style="font-size:11px;color:var(--text-light)">Preenche automaticamente os 12 meses</span>
+  <div class="form-grid" style="padding-top:0">
+    <div class="field">
+      <label>RBT12 (Receita Bruta Total 12 meses)</label>
+      <input type="text" id="rbt12Input" placeholder="Ex: 1.200.000,00" oninput="parseRbt12Input()"
+        style="font-size:15px;font-weight:700;color:var(--primary)">
+    </div>
+    <div class="field">
+      <label>Compras / Aquisições anuais (R$)</label>
+      <input type="text" id="comprasInput" placeholder="Ex: 500.000,00" oninput="parseComprasInput()"
+        style="font-size:15px;font-weight:600">
+      <span style="font-size:10px;color:var(--text-light);margin-top:2px">Usado para créditos CBS, ICMS e IPI</span>
     </div>
   </div>
-  <div style="padding:0 32px 12px">
+  <div style="display:none" id="revTableWrapper">
     <table class="rev-table">
       <thead><tr><th style="width:90px">Mês</th><th>Receita Serviços</th><th>Outras Receitas</th><th style="width:140px">Total</th></tr></thead>
       <tbody id="revBody"></tbody>
       <tfoot><tr class="tot-row"><td>TOTAL</td><td id="totServ">0,00</td><td id="totOutras">0,00</td><td id="totGeral">0,00</td></tr></tfoot>
     </table>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:10px;font-size:13px">
-      <div><strong>RBT12:</strong> <span id="rbt12">R$ 0,00</span></div>
-      <div><strong>Média Mensal:</strong> <span id="mediaFat">R$ 0,00</span></div>
-      <div><strong>Maior/Menor:</strong> R$ <span id="maiorFat">0</span> / R$ <span id="menorFat">0</span></div>
-    </div>
   </div>
 
   <div style="padding:0 32px">
@@ -653,14 +654,15 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
   </div>
 
   <div style="padding:0 32px">
-    <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--primary)">4. Parâmetros Lucro Presumido</h3>
+    <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--primary)">4. Tributos (LP / Não SN)</h3>
   </div>
   <div class="form-grid" style="padding-top:0">
+    <div class="field"><label>Alíquota ISS (%)</label><input id="aliquotaISS" type="number" value="2.5" step="0.1" oninput="calc()"></div>
+    <div class="field"><label>Alíquota ICMS (%)</label><input id="aliquotaICMS" type="number" value="0" step="0.1" oninput="calc()"></div>
+    <div class="field"><label>Alíquota IPI (%)</label><input id="aliquotaIPI" type="number" value="0" step="0.1" oninput="calc()"></div>
     <div class="field"><label>Presunção IRPJ (%)</label><input id="presIRPJ" type="number" value="32" oninput="calc()"></div>
     <div class="field"><label>Presunção CSLL (%)</label><input id="presCSLL" type="number" value="32" oninput="calc()"></div>
-    <div class="field"><label>Alíquota ISS (%)</label><input id="aliquotaISS" type="number" value="2.5" placeholder="ex: 2,5 (Indaiatuba)" oninput="calc()"></div>
-    <div class="field"><label>Alíquota ICMS (%)</label><input id="aliquotaICMS" type="number" value="0" oninput="calc()"></div>
-    <div class="field full"><label>% Serviços para LP</label><input id="segregacao" type="number" value="" oninput="calc()"></div>
+    <div class="field full"><label>% Serviços no Faturamento (LP)</label><input id="segregacao" type="number" value="" placeholder="100 = só serviço, 0 = só mercadoria" oninput="calc()"></div>
   </div>
 
   <div style="padding:0 32px">
@@ -1265,28 +1267,49 @@ function initRevTable() {
   tbody.innerHTML='';
   for (let i=0;i<12;i++) {
     const tr=document.createElement('tr');
-    tr.innerHTML='<td>'+MONTHS[i]+'</td><td><input type="number" step="0.01" value="'+revData[i]+'" id="rev'+i+'" oninput="atualizarRev('+i+')"></td><td><input type="number" step="0.01" value="0" id="out'+i+'" oninput="atualizarRev('+i+')"></td><td id="tot'+i+'">'+revData[i].toFixed(2)+'</td>';
+    tr.style.display='none';
+    tr.innerHTML='<td>'+MONTHS[i]+'</td><td><input type="hidden" value="'+revData[i]+'" id="rev'+i+'"></td><td><input type="hidden" value="0" id="out'+i+'"></td><td id="tot'+i+'">'+revData[i].toFixed(2)+'</td>';
     tbody.appendChild(tr);
   }
 }
 function atualizarRev(i) {
-  const s=parseFloat(document.getElementById('rev'+i).value)||0;
-  const o=parseFloat(document.getElementById('out'+i).value)||0;
-  const t=s+o;
-  document.getElementById('tot'+i).textContent=t.toFixed(2);
-  revData[i]=t; calc();
+  const rbt = brToNum(document.getElementById('rbt12Input').value);
+  if (rbt > 0) {
+    const perMonth = Math.round(rbt / 12);
+    for (let j = 0; j < 12; j++) {
+      const el = document.getElementById('rev' + j);
+      if (el) el.value = perMonth;
+      revData[j] = perMonth;
+    }
+  }
+  calc();
 }
 
-function fillRevenueFromRbt12() {
-  const rbt = parseFloat(document.getElementById('rbt12Input').value) || 0;
-  if (rbt <= 0) return;
-  const perMonth = Math.round(rbt / 12);
-  for (let i = 0; i < 12; i++) {
-    document.getElementById('rev' + i).value = perMonth;
-    document.getElementById('out' + i).value = 0;
-  }
-  atualizarRev(0);
+// Converte string brasileira (ex: "1.200.000,00") para número
+function brToNum(s) {
+  if (!s) return 0;
+  const r = String(s).replace(/\./g, '').replace(',', '.');
+  return parseFloat(r) || 0;
 }
+// Formata número para exibição brasileira
+function fmtNum(v) { return fmt(v); }
+
+function parseRbt12Input() {
+  const val = brToNum(document.getElementById('rbt12Input').value);
+  if (val > 0) {
+    const perMonth = Math.round(val / 12);
+    for (let i = 0; i < 12; i++) {
+      document.getElementById('rev' + i).value = perMonth;
+      document.getElementById('out' + i).value = 0;
+    }
+    atualizarRev(0);
+  }
+}
+
+function parseComprasInput() {
+  calc();
+}
+
 function fmt(v) { const [i,d]=v.toFixed(2).split('.'); return i.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+d; }
 function fmtMoeda(v) { return 'R$ '+fmt(v); }
 function fmtPct(v) { return (v*100).toFixed(2).replace('.',',')+'%'; }
@@ -1324,6 +1347,28 @@ const CNAE_ANEXO_IV=new Set([
   '8121-4','8122-2','8129-0'
 ]);
 
+// Retorna categoria tributária do CNAE: servico, comercio, industria, construcao
+function getCnaeCategoria(codigo) {
+  if (!codigo) return 'servico';
+  const tax = window.CNAE_TAX_DATA?.[codigo];
+  if (tax?.categoria_tributaria) return tax.categoria_tributaria;
+  const classe = codigo.split('/')[0];
+  const num = parseInt(classe.replace(/\D/g,'')) || 0;
+  if (num >= 10 && num <= 33) return 'industria';
+  if (num >= 45 && num <= 49) return 'comercio';
+  if (num >= 41 && num <= 43) return 'construcao';
+  return 'servico';
+}
+
+// Retorna base legal da CBS para o CNAE
+function getCbsLegalBasis(codigo) {
+  if (!codigo) return '';
+  const cbs = window.getCbsTreatment ? window.getCbsTreatment(codigo) : {};
+  if (cbs.tipo === 'zero') return 'Art. 8º, LC 214/2025 - Alíquota zero (cesta básica)';
+  if (cbs.tipo === 'reduzida') return 'Art. 9º, LC 214/2025 - Alíquota reduzida a 60% da padrão';
+  return 'Art. 7º, LC 214/2025 - Alíquota padrão';
+}
+
 function getAnexoSN(cnae,classe,fatorR) {
   const tax=window.CNAE_TAX_DATA?.[cnae];
   if (tax?.anexo_simples&&tax?.status!='nao_classificado') return tax.anexo_simples;
@@ -1341,20 +1386,23 @@ function getAnexoSN(cnae,classe,fatorR) {
 }
 
 function calc() {
-  let totalRev=0;
-  for (let i=0;i<12;i++) {
-    const s=parseFloat(document.getElementById('rev'+i)?.value)||0;
-    const o=parseFloat(document.getElementById('out'+i)?.value)||0;
-    revData[i]=s+o; totalRev+=revData[i];
+  // Receita: usa RBT12 do input simplificado
+  const rbtInput = document.getElementById('rbt12Input').value;
+  const rbt12 = brToNum(rbtInput);
+  // Sincroniza tabela mensal (mantida internamente para compatibilidade)
+  if (rbt12 > 0 && document.getElementById('rev0')) {
+    const perMonth = Math.round(rbt12 / 12);
+    for (let i = 0; i < 12; i++) {
+      const revEl = document.getElementById('rev' + i);
+      if (revEl) {
+        revEl.value = perMonth;
+        document.getElementById('out' + i).value = 0;
+        revData[i] = perMonth;
+      }
+    }
+    document.getElementById('totGeral').textContent = rbt12.toFixed(2);
   }
-  const rbt12=totalRev, mediaMensal=rbt12/12;
-  document.getElementById('totServ').textContent=revData.reduce((a,v,i)=>a+(parseFloat(document.getElementById('rev'+i)?.value)||0),0).toFixed(2);
-  document.getElementById('totOutras').textContent=revData.reduce((a,v,i)=>a+(parseFloat(document.getElementById('out'+i)?.value)||0),0).toFixed(2);
-  document.getElementById('totGeral').textContent=rbt12.toFixed(2);
-  document.getElementById('rbt12').textContent=fmtMoeda(rbt12);
-  document.getElementById('mediaFat').textContent=fmtMoeda(mediaMensal);
-  document.getElementById('maiorFat').textContent=fmt(Math.max(...revData));
-  document.getElementById('menorFat').textContent=fmt(Math.min(...revData));
+  const mediaMensal = rbt12 / 12;
 
   const sal=parseFloat(document.getElementById('salarios').value)||0;
   const prol=parseFloat(document.getElementById('prolabore').value)||0;
@@ -1411,7 +1459,9 @@ function calc() {
   const presCSLL=(parseFloat(document.getElementById('presCSLL').value)||32)/100;
   const issPct=(parseFloat(document.getElementById('aliquotaISS').value)||0)/100;
   const icmsPct=(parseFloat(document.getElementById('aliquotaICMS').value)||0)/100;
+  const ipiPct=(parseFloat(document.getElementById('aliquotaIPI').value)||0)/100;
   const segregPct=(parseFloat(document.getElementById('segregacao').value)||100)/100;
+  const comprasAnual = brToNum(document.getElementById('comprasInput').value);
   const presDefault=PRES[tipoAtiv]||{irpj:0.32,csll:0.32};
   const presIRPJ_ef=presIRPJ||presDefault.irpj;
   const presCSLL_ef=presCSLL||presDefault.csll;
@@ -1425,7 +1475,12 @@ function calc() {
   const pis=receitaLP*0.0065;
   const cofins=receitaLP*0.03;
   const iss=receitaLP*issPct;
-  const icms=receitaLP*icmsPct;
+  // ICMS: usa base de compras (mercadorias) + receita para comércio
+  const baseIcms = (cnae && (getCnaeCategoria(cnae) === 'comercio' || getCnaeCategoria(cnae) === 'industria'))
+    ? Math.max(comprasAnual, receitaLP * 0.5) : receitaLP;
+  const icms=baseIcms*icmsPct;
+  // IPI: incide sobre compras para indústria
+  const ipi=getCnaeCategoria(cnae)==='industria'?comprasAnual*ipiPct:0;
   const encargosAnual=encargosMensais*12;
   const lpTotal=irpjTotal+csll+pis+cofins+iss+icms+encargosAnual;
   const lpMedia=lpTotal/12;
@@ -1478,7 +1533,7 @@ function calc() {
   document.getElementById('snMedia').textContent=fmtMoeda(snMedia);
 
   // LP Card - Grouped
-  const lpFederal=irpj15+adicionalIRPJ+csll+pis+cofins;
+  const lpFederal=irpj15+adicionalIRPJ+csll+pis+cofins+ipi;
   const lpMunicipal=iss+icms;
   document.getElementById('lpFederalTotal').textContent=fmtMoeda(lpFederal);
   document.getElementById('lpMunicipalTotal').textContent=fmtMoeda(lpMunicipal);
@@ -1491,6 +1546,7 @@ function calc() {
   setLP('lpPisCof',pis+cofins,'lpPisCofp');
   setLP('lpIss',iss,'lpIssp');
   setLP('lpIcms',icms,'lpIcmsp');
+  setLP('lpIpi',ipi,'lpIpip');
   setLP('lpEncargos',encargosAnual,'lpEncargosp');
   document.getElementById('lpTotal').textContent=fmtMoeda(lpTotal);
   document.getElementById('lpMedia').textContent=fmtMoeda(lpMedia);
@@ -1562,10 +1618,12 @@ function calc() {
   document.getElementById('cbsAliqEfetiva').textContent=fmtPct(rbt12>0?cbsLiquidaV/rbt12:0);
   document.getElementById('cbsTotal').textContent=fmtMoeda(cbsLiquidaV);
   document.getElementById('cbsMedia').textContent=fmtMoeda(cbsLiquidaV/12);
+  const cbsLegal = getCbsLegalBasis(cnae);
   document.getElementById('cbsAliquotaDisplay').textContent=fmtPct(aliqCbsEfetiva);
-  document.getElementById('cbsNotaRodape').textContent=credTotalCbs>0
+  document.getElementById('cbsNotaRodape').innerHTML = (credTotalCbs>0
     ?'Estimativa baseada em alíquota CBS de '+(aliqCbsEfetiva*100).toFixed(1)+'% ('+cbsLabelCnae+') e créditos informados.'
-    :'Estimativa bruta, sem consideração de créditos da CBS. Alíquota: '+(aliqCbsEfetiva*100).toFixed(1)+'% ('+cbsLabelCnae+').';
+    :'Estimativa bruta, sem consideração de créditos da CBS. Alíquota: '+(aliqCbsEfetiva*100).toFixed(1)+'% ('+cbsLabelCnae+').')
+    + '<br><span style="color:var(--text-light)">Base legal: ' + cbsLegal + '</span>';
 
   // CBS Decision section
   const pisCofinsTotalCbs=parseFloat(document.getElementById('refAtualTotal').textContent.replace(/[^\d,]/g,'').replace(',','.'))||(pis+cofins);
@@ -1618,7 +1676,12 @@ function calc() {
   const alerts=[];
   if (sujeitoFR&&fatorR>0.25&&fatorR<0.31) alerts.push({type:'warning',msg:'Fator R próximo de 28% — verificar enquadramento Anexo III ou V'});
   if (issPct===0) alerts.push({type:'warning',msg:'ISS não confirmado — verificar legislação municipal'});
-  if (cnae) alerts.push({type:'info',msg:'Confirmar se a atividade corresponde ao CNAE '+cnae+' informado'});
+  if (cnae) {
+    alerts.push({type:'info',msg:'Confirmar se a atividade corresponde ao CNAE '+cnae+' informado'});
+    const cbsT = window.getCbsTreatment ? window.getCbsTreatment(cnae) : {};
+    if (cbsT.tipo === 'reduzida') alerts.push({type:'info',msg:'CBS: Alíquota reduzida para este CNAE (' + cbsT.desc + ') — ' + getCbsLegalBasis(cnae)});
+    if (cbsT.tipo === 'zero') alerts.push({type:'success',msg:'CBS: Alíquota zero para este CNAE (' + cbsT.desc + ') — ' + getCbsLegalBasis(cnae)});
+  }
   if (rbt12>4800000) alerts.push({type:'error',msg:'Receita acima do limite do SN (R$ 4,8M) — verificar sublimite'});
   if (sujeitoFR&&fatorR<0.28) alerts.push({type:'error',msg:'Fator R abaixo de 28% — sujeito a Anexo V (maior carga)'});
 
@@ -1675,7 +1738,7 @@ function scenarioCalc() {
   document.getElementById('scnEco').textContent=fmtMoeda(eco);
 }
 function scenarioSyncLive() {
-  const rbt=parseFloat(document.getElementById('rbt12').textContent.replace(/[^\d,]/g,'').replace('.','').replace(',','.'))||0;
+  const rbt = brToNum(document.getElementById('rbt12Input').value);
   const folha=parseFloat(document.getElementById('salarios').value)||0;
   const iss=document.getElementById('aliquotaISS').value;
   if (!document.getElementById('scnFaturamento').value) document.getElementById('scnFaturamento').value=Math.round(rbt);
@@ -1695,22 +1758,19 @@ function scenarioApplyToDashboard() {
   const folha=parseFloat(document.getElementById('scnFolha').value);
   const iss=parseFloat(document.getElementById('scnISS').value);
   const cnaeScn=document.getElementById('scnCNAE').value.trim();
-  if (fat) { 
-    const perMonth=Math.round(fat/12);
-    for (let i=0;i<12;i++) document.getElementById('rev'+i).value=Math.round(perMonth/100)*100;
-    atualizarRev(0);
-  }
+  if (fat) document.getElementById('rbt12Input').value=fat.toString();
   if (folha) document.getElementById('salarios').value=folha;
   if (iss) document.getElementById('aliquotaISS').value=iss;
   if (cnaeScn) document.getElementById('cnae').value=cnaeScn;
+  parseRbt12Input();
   calc(); showTab('executivo');
 }
 
 // ===== REFORMA TRIBUTÁRIA =====
 function calcReforma() {
   const g=(id)=>parseFloat(document.getElementById(id).value)||0;
-  const rbtSpan=document.getElementById('rbt12')?.textContent?.replace(/[^\d,]/g,'').replace(',','.')||'0';
-  const receita=g('refReceita')||parseFloat(rbtSpan)||0;
+  const rbtFromInput = brToNum(document.getElementById('rbt12Input').value);
+  const receita=g('refReceita')||rbtFromInput||0;
   if (!receita) {
     document.getElementById('refAtualTotal').textContent='R$ 0';
     document.getElementById('refCbsLiquida').textContent='R$ 0';
@@ -1851,11 +1911,17 @@ function calcReforma() {
   if (refAlerts.length===0) acEl.innerHTML='<div class="ref-alert info">Nenhum alerta crítico identificado.</div>';
   else acEl.innerHTML=refAlerts.slice(0,5).map(a=>'<div class="ref-alert '+a.t+'">'+(a.t==='warning'?'\u26A0 ':'\u2139 ')+a.m+'</div>').join('');
 
-  // Conclusão
+  // Conclusão com base legal
+  const cnaeRef = document.getElementById('cnae').value.trim();
+  const cbsLegalBasis = getCbsLegalBasis(cnaeRef);
+  const cbsTreatment = window.getCbsTreatment ? window.getCbsTreatment(cnaeRef) : {};
   let conc='';
   if (impacto>0) conc='Com base nas premissas informadas, a substituição do PIS e da COFINS pela CBS poderá <strong>elevar</strong> a carga tributária líquida estimada em <strong>'+fmtMoeda(impacto)+' por ano</strong> (cerca de '+fmtMoeda(impacto/12)+'/mês). O resultado decorre principalmente da relação entre a alíquota da CBS ('+fmtPct(aliqCbs)+') e o volume de créditos aproveitáveis ('+fmtMoeda(credTotal)+').';
   else if (impacto<0) conc='Com base nas premissas informadas, a CBS poderá <strong>reduzir</strong> a carga tributária líquida estimada em <strong>'+fmtMoeda(Math.abs(impacto))+' por ano</strong> (cerca de '+fmtMoeda(Math.abs(impacto)/12)+'/mês), principalmente em razão do aproveitamento de créditos sobre as aquisições ('+fmtMoeda(credTotal)+').';
   else conc='A diferença estimada entre o modelo atual e a CBS é reduzida. O resultado final dependerá da regulamentação aplicável, da classificação das receitas e do efetivo aproveitamento dos créditos.';
+  conc += '<br><br><strong>Classificação CBS para este CNAE:</strong> ' + (cbsTreatment.desc || 'Padrão');
+  conc += '<br><strong>Base legal:</strong> ' + cbsLegalBasis;
+  conc += '<br><span style="font-size:10px;color:var(--text-light)">EC 132/2023 | LC 214/2025</span>';
   document.getElementById('refConclusao').innerHTML=conc;
 }
 
@@ -1913,13 +1979,15 @@ function limparDados() {
   document.getElementById('presCSLL').value=32;
   document.getElementById('aliquotaISS').value=2.5;
   document.getElementById('aliquotaICMS').value=0;
+  document.getElementById('aliquotaIPI').value=0;
   document.getElementById('segregacao').value=100;
+  document.getElementById('rbt12Input').value='';
+  document.getElementById('comprasInput').value='';
   localStorage.removeItem('ctDados');
   calc();
 }
 function salvarDados() {
-  const data={razao:document.getElementById('razao').value,fantasia:document.getElementById('fantasia').value,cnpj:document.getElementById('cnpj').value,cnae:document.getElementById('cnae').value,atividade:document.getElementById('atividade').value,municipio:document.getElementById('municipio').value,estado:document.getElementById('estado').value,regime:document.getElementById('regime').value,tipoAtivLP:document.getElementById('tipoAtivLP').value,salarios:document.getElementById('salarios').value,prolabore:document.getElementById('prolabore').value,inss:document.getElementById('inss').value,rat:document.getElementById('rat').value,terceiros:document.getElementById('terceiros').value,fgts:document.getElementById('fgts').value,presIRPJ:document.getElementById('presIRPJ').value,presCSLL:document.getElementById('presCSLL').value,aliquotaISS:document.getElementById('aliquotaISS').value,aliquotaICMS:document.getElementById('aliquotaICMS').value,segregacao:document.getElementById('segregacao').value,revs:[]};
-  for (let i=0;i<12;i++) data.revs.push({serv:document.getElementById('rev'+i).value,out:document.getElementById('out'+i).value});
+  const data={razao:document.getElementById('razao').value,fantasia:document.getElementById('fantasia').value,cnpj:document.getElementById('cnpj').value,cnae:document.getElementById('cnae').value,atividade:document.getElementById('atividade').value,municipio:document.getElementById('municipio').value,estado:document.getElementById('estado').value,regime:document.getElementById('regime').value,tipoAtivLP:document.getElementById('tipoAtivLP').value,salarios:document.getElementById('salarios').value,prolabore:document.getElementById('prolabore').value,inss:document.getElementById('inss').value,rat:document.getElementById('rat').value,terceiros:document.getElementById('terceiros').value,fgts:document.getElementById('fgts').value,presIRPJ:document.getElementById('presIRPJ').value,presCSLL:document.getElementById('presCSLL').value,aliquotaISS:document.getElementById('aliquotaISS').value,aliquotaICMS:document.getElementById('aliquotaICMS').value,aliquotaIPI:document.getElementById('aliquotaIPI').value,segregacao:document.getElementById('segregacao').value,rbt12:document.getElementById('rbt12Input').value,compras:document.getElementById('comprasInput').value};
   localStorage.setItem('ctDados',JSON.stringify(data));
   alert('Dados salvos com sucesso!');
 }
@@ -1947,13 +2015,11 @@ function carregarDados() {
     document.getElementById('presCSLL').value=data.presCSLL||32;
     document.getElementById('aliquotaISS').value=data.aliquotaISS||2.5;
     document.getElementById('aliquotaICMS').value=data.aliquotaICMS||0;
+    document.getElementById('aliquotaIPI').value=data.aliquotaIPI||0;
     document.getElementById('segregacao').value=data.segregacao||100;
-    if (data.revs) {
-      for (let i=0;i<Math.min(12,data.revs.length);i++) {
-        document.getElementById('rev'+i).value=data.revs[i].serv||0;
-        document.getElementById('out'+i).value=data.revs[i].out||0;
-      }
-    }
+    if (data.rbt12) document.getElementById('rbt12Input').value=data.rbt12;
+    if (data.compras) document.getElementById('comprasInput').value=data.compras;
+    parseRbt12Input();
     calc();
   } catch(e) { console.log('Erro ao carregar:',e); }
 }
