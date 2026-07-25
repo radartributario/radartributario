@@ -602,7 +602,7 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
     <div class="field"><label>Estado</label><input id="estado" value="" oninput="calc()"></div>
     <div class="field"><label>Regime Atual</label><select id="regime" onchange="calc()"><option>Simples Nacional</option><option>Lucro Presumido</option><option>Lucro Real</option></select></div>
     <div class="field"><label>Tipo de Atividade (LP)</label>
-      <select id="tipoAtivLP" onchange="delete document.getElementById('presIRPJ').dataset.userEdited; delete document.getElementById('presCSLL').dataset.userEdited; calc()">
+      <select id="tipoAtivLP" onchange="calc()">
         <option value="servicos">Serviços em Geral</option>
         <option value="comercio">Comércio</option>
         <option value="industria">Indústria</option>
@@ -662,8 +662,8 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
     <div class="field"><label>Alíquota ICMS (%)</label><input id="aliquotaICMS" type="number" value="0" step="0.1" oninput="calc()"></div>
     <div class="field"><label>Alíquota IPI (%)</label><input id="aliquotaIPI" type="number" value="0" step="0.1" oninput="calc()"></div>
     </div>
-    <div class="field"><label>Presunção IRPJ (%)</label><input id="presIRPJ" type="number" value="32" oninput="calc(); this.dataset.userEdited='1'" onfocus="this.dataset.userEdited='1'"></div>
-    <div class="field"><label>Presunção CSLL (%)</label><input id="presCSLL" type="number" value="32" oninput="calc(); this.dataset.userEdited='1'" onfocus="this.dataset.userEdited='1'"></div>
+    <div class="field"><label>Presunção IRPJ (%)</label><input id="presIRPJ" type="text" readonly class="calc" value="32"></div>
+    <div class="field"><label>Presunção CSLL (%)</label><input id="presCSLL" type="text" readonly class="calc" value="32"></div>
     <div class="field full"><label>% Serviços no Faturamento (LP)</label><input id="segregacao" type="number" value="" placeholder="100 = só serviço, 0 = só mercadoria" oninput="calc()"></div>
   </div>
 
@@ -1297,7 +1297,15 @@ function brToNum(s) {
 function fmtNum(v) { return fmt(v); }
 
 function parseRbt12Input() {
-  const val = brToNum(document.getElementById('rbt12Input').value);
+  const el = document.getElementById('rbt12Input');
+  const raw = el.value.replace(/[^\d,]/g, '').replace(',', '.');
+  const num = parseFloat(raw);
+  if (!isNaN(num) && raw.length > 0) {
+    const [intPart, decPart] = num.toFixed(2).split('.');
+    const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + (decPart || '00');
+    if (el.value !== formatted) { el.value = formatted; }
+  }
+  const val = num || 0;
   if (val > 0) {
     const perMonth = Math.round(val / 12);
     for (let i = 0; i < 12; i++) {
@@ -1309,6 +1317,14 @@ function parseRbt12Input() {
 }
 
 function parseComprasInput() {
+  const el = document.getElementById('comprasInput');
+  const raw = el.value.replace(/[^\d,]/g, '').replace(',', '.');
+  const num = parseFloat(raw);
+  if (!isNaN(num) && raw.length > 0) {
+    const [intPart, decPart] = num.toFixed(2).split('.');
+    const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + (decPart || '00');
+    if (el.value !== formatted) { el.value = formatted; }
+  }
   calc();
 }
 
@@ -1393,10 +1409,12 @@ function getAnexoSN(cnae,classe,fatorR) {
 }
 
 function calc() {
-  // Mostra/esconde ICMS e IPI conforme regime
+  // Mostra/esconde ICMS e IPI: oculto no SN, mostrado apenas em LP comércio/indústria
   const regime = document.getElementById('regime').value;
   const isSN = regime === 'Simples Nacional';
-  document.getElementById('lpIcmsIpiFields').style.display = isSN ? 'none' : '';
+  const cat = getCnaeCategoria(cnae);
+  const showIcmsIpi = !isSN && (cat === 'comercio' || cat === 'industria');
+  document.getElementById('lpIcmsIpiFields').style.display = showIcmsIpi ? '' : 'none';
   document.getElementById('comprasHint').textContent = isSN
     ? 'Usado para créditos CBS'
     : 'Usado para créditos CBS, ICMS e IPI';
@@ -1472,25 +1490,21 @@ function calc() {
   const tipoAtiv=document.getElementById('tipoAtivLP').value;
   // Auto-preenche presunção conforme tipo de atividade
   const presDefault=PRES[tipoAtiv]||{irpj:0.32,csll:0.32};
-  const presIRPJEl=document.getElementById('presIRPJ');
-  const presCSLLEl=document.getElementById('presCSLL');
-  if (!presIRPJEl.dataset.userEdited) { presIRPJEl.value=presDefault.irpj*100; presIRPJEl.dataset.auto='1'; }
-  if (!presCSLLEl.dataset.userEdited) { presCSLLEl.value=presDefault.csll*100; presCSLLEl.dataset.auto='1'; }
-  const presIRPJ=(parseFloat(presIRPJEl.value)||32)/100;
-  const presCSLL=(parseFloat(presCSLLEl.value)||32)/100;
+  document.getElementById('presIRPJ').value=presDefault.irpj*100;
+  document.getElementById('presCSLL').value=presDefault.csll*100;
+  const presIRPJ=presDefault.irpj;
+  const presCSLL=presDefault.csll;
   const issPct=(parseFloat(document.getElementById('aliquotaISS').value)||0)/100;
   const icmsPct=(parseFloat(document.getElementById('aliquotaICMS').value)||0)/100;
   const ipiPct=(parseFloat(document.getElementById('aliquotaIPI').value)||0)/100;
   const segregPct=(parseFloat(document.getElementById('segregacao').value)||100)/100;
   const comprasAnual = brToNum(document.getElementById('comprasInput').value);
-  const presIRPJ_ef=presIRPJ||presDefault.irpj;
-  const presCSLL_ef=presCSLL||presDefault.csll;
   const receitaLP=rbt12*segregPct+revData.reduce((a,v)=>a+v*(1-segregPct),0);
-  const baseIRPJ=receitaLP*presIRPJ_ef;
+  const baseIRPJ=receitaLP*presIRPJ;
   const irpj15=baseIRPJ*0.15;
   const adicionalIRPJ=Math.max(0,(baseIRPJ/4-60000))*4*0.10;
   const irpjTotal=irpj15+adicionalIRPJ;
-  const baseCSLL=receitaLP*presCSLL_ef;
+  const baseCSLL=receitaLP*presCSLL;
   const csll=baseCSLL*0.09;
   const pis=receitaLP*0.0065;
   const cofins=receitaLP*0.03;
@@ -1701,6 +1715,8 @@ function calc() {
     const cbsT = window.getCbsTreatment ? window.getCbsTreatment(cnae) : {};
     if (cbsT.tipo === 'reduzida') alerts.push({type:'info',msg:'CBS: Alíquota reduzida para este CNAE (' + cbsT.desc + ') — ' + getCbsLegalBasis(cnae)});
     if (cbsT.tipo === 'zero') alerts.push({type:'success',msg:'CBS: Alíquota zero para este CNAE (' + cbsT.desc + ') — ' + getCbsLegalBasis(cnae)});
+    if (!isSN && cat === 'comercio') alerts.push({type:'info',msg:'ICMS aplicável (comércio) — verificar alíquota interestadual e substituição tributária'});
+    if (!isSN && cat === 'industria') alerts.push({type:'info',msg:'ICMS e IPI aplicáveis (indústria) — verificar créditos e substituição tributária'});
   }
   if (rbt12>4800000) alerts.push({type:'error',msg:'Receita acima do limite do SN (R$ 4,8M) — verificar sublimite'});
   if (sujeitoFR&&fatorR<0.28) alerts.push({type:'error',msg:'Fator R abaixo de 28% — sujeito a Anexo V (maior carga)'});
@@ -2042,10 +2058,8 @@ function carregarDados() {
     document.getElementById('rat').value=data.rat||3;
     document.getElementById('terceiros').value=data.terceiros||3.3;
     document.getElementById('fgts').value=data.fgts||8;
-    if (data.presIRPJ) { document.getElementById('presIRPJ').value=data.presIRPJ; document.getElementById('presIRPJ').dataset.userEdited='1'; }
-    else { document.getElementById('presIRPJ').value=32; delete document.getElementById('presIRPJ').dataset.userEdited; }
-    if (data.presCSLL) { document.getElementById('presCSLL').value=data.presCSLL; document.getElementById('presCSLL').dataset.userEdited='1'; }
-    else { document.getElementById('presCSLL').value=32; delete document.getElementById('presCSLL').dataset.userEdited; }
+    if (data.presIRPJ) document.getElementById('presIRPJ').value=data.presIRPJ;
+    if (data.presCSLL) document.getElementById('presCSLL').value=data.presCSLL;
     document.getElementById('aliquotaISS').value=data.aliquotaISS||2.5;
     document.getElementById('aliquotaICMS').value=data.aliquotaICMS||0;
     document.getElementById('aliquotaIPI').value=data.aliquotaIPI||0;
