@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Radar Tributário</title>
+<title>Compare Tributo</title>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -334,7 +334,7 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
   <div class="dash-header">
     <div class="dash-top">
       <div class="dash-title">
-        <span class="t">Radar Tributário</span>
+        <span class="t">Compare Tributo</span>
         <span class="s">Simples Nacional × Lucro Presumido</span>
       </div>
       <div class="logo-area">
@@ -947,7 +947,7 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
 </div>
 
 <div style="font-size:11px;color:#B0B8C8;text-align:center;padding:16px;border-top:1px solid var(--border);margin-top:0">
-  Radar Tributário &mdash; Esta é uma estimativa preliminar. A decisão definitiva depende de análise técnica completa pelo contador responsável.
+  Compare Tributo &mdash; Esta é uma estimativa preliminar. A decisão definitiva depende de análise técnica completa pelo contador responsável.
 </div>
 </div>
 
@@ -1982,7 +1982,7 @@ function exportPDF() {
   const dataStr=now.toLocaleDateString('pt-BR')+' '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   const pag='<span class="pgn">Página <span class="page"></span></span>';
 
-  const html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Radar Tributário</title><style>'
+  const html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Compare Tributo</title><style>'
     +'@page{size:A4 portrait;margin:10mm 12mm 12mm 12mm}'
     +'*{margin:0;padding:0;box-sizing:border-box}'
     +'body{font-family:"Segoe UI",Arial,sans-serif;color:#1A1A2E;font-size:10px;line-height:1.4;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
@@ -2034,7 +2034,7 @@ function exportPDF() {
     +'</style></head><body>'
 
     // HEADER
-    +'<div class="rep-hdr"><div class="l"><div class="t">Radar Tributário</div><div class="s">Simples Nacional \u00D7 Lucro Presumido</div><div class="dt">'+dataStr+'</div></div>'
+    +'<div class="rep-hdr"><div class="l"><div class="t">Compare Tributo</div><div class="s">Simples Nacional \u00D7 Lucro Presumido</div><div class="dt">'+dataStr+'</div></div>'
     +(logoData?'<div class="r"><img src="'+logoData+'" alt="Logo"></div>':'<div class="r" style="width:140px"></div>')
     +'</div>'
 

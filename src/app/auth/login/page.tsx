@@ -38,7 +38,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-800">
-            Radar Tributário
+            Compare Tributo
           </h1>
           <p className="text-slate-500 mt-1">
             Descubra o melhor regime para sua empresa

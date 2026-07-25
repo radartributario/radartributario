@@ -79,7 +79,7 @@ export default function DashboardPage() {
           <div className="w-8 h-8 rounded-lg bg-blue-700 flex items-center justify-center text-white text-sm font-bold">
             RT
           </div>
-          <span className="font-bold text-slate-800">Radar Tributário</span>
+          <span className="font-bold text-slate-800">Compare Tributo</span>
         </div>
         <nav className="flex-1 p-4 space-y-1">
           <button

@@ -9,7 +9,7 @@ export default function Home() {
             <div className="w-8 h-8 rounded-lg bg-blue-700 flex items-center justify-center text-white text-sm font-bold">
               RT
             </div>
-            <span className="font-bold text-slate-800 text-lg">Radar Tributário</span>
+            <span className="font-bold text-slate-800 text-lg">Compare Tributo</span>
           </div>
           <div className="flex items-center gap-3">
             <Link
@@ -108,7 +108,7 @@ export default function Home() {
         <section className="py-20 px-6">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-3xl font-bold text-slate-900 text-center mb-4">
-              Por que usar o Radar Tributário?
+              Por que usar o Compare Tributo?
             </h2>
             <p className="text-slate-500 text-center max-w-xl mx-auto mb-16">
               Ferramentas que fazem a diferença no seu dia a dia.
@@ -155,10 +155,10 @@ export default function Home() {
             <div className="w-6 h-6 rounded bg-blue-700 flex items-center justify-center text-white text-xs font-bold">
               RT
             </div>
-            Radar Tributário &mdash; Inteligência Tributária
+            Compare Tributo &mdash; Inteligência Tributária
           </div>
           <p className="text-sm text-slate-400">
-            &copy; {new Date().getFullYear()} Radar Tributário. Todos os
+            &copy; {new Date().getFullYear()} Compare Tributo. Todos os
             direitos reservados.
           </p>
         </div>

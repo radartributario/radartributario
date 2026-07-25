@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Radar Tributário — Comparador de Regimes Tributários",
+  title: "Compare Tributo — Comparador de Regimes Tributários",
   description:
     "Descubra se sua empresa está no melhor regime tributário. Simule Simples Nacional, Lucro Presumido e Reforma CBS.",
 };
