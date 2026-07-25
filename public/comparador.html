@@ -38,8 +38,6 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
 .dash-header .dash-title{flex:1;text-align:center}
 .dash-header .dash-title .t{font-size:20px;font-weight:700;letter-spacing:-0.3px}
 .dash-header .dash-title .s{display:block;font-size:12px;font-weight:400;color:var(--text-light);margin-top:1px}
-.dash-header .logo-area{width:200px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
-.dash-header .logo-area img{width:100%;height:auto;display:block}
 .dash-header .dash-grid{display:flex}
 .dash-header .dash-grid .info-col{display:flex;flex-direction:column;gap:1px;flex:1}
 .dash-header .info-row{display:flex;gap:4px;font-size:13px;line-height:1.5}
@@ -268,7 +266,6 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
 /* Responsive */
 @media(max-width:1024px){
   .dash-header{padding:20px 24px}
-  .dash-header .logo-area{width:160px}
   .dash-header .dash-grid{gap:12px}
   .kpi-row{grid-template-columns:1fr;padding:20px}
   .comparison-row{grid-template-columns:1fr 1fr;padding:20px}
@@ -283,7 +280,6 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
   .dash-header{padding:16px}
   .dash-header .dash-top{flex-direction:column;align-items:center}
   .dash-header .dash-title{text-align:center}
-  .dash-header .logo-area{width:140px;margin:4px auto 0}
   .dash-header .dash-grid{gap:8px}
   .dash-header .info-row.last{flex-wrap:wrap;gap:4px 8px}
   .form-grid{grid-template-columns:1fr;padding:16px 20px}
@@ -337,9 +333,7 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
         <span class="t">Compare Tributo</span>
         <span class="s">Simples Nacional × Lucro Presumido</span>
       </div>
-      <div class="logo-area">
-        <img src="logo-escrita-escura.png" alt="Logo">
-      </div>
+      <div style="width:200px"></div>
     </div>
     <div class="dash-grid">
       <div class="info-col">
@@ -989,10 +983,11 @@ const CNAE = {
     nao_classificado: { label: 'Não classificado', emoji: '\u{1F534}', cls: 'status-vermelho' },
   },
   init() {
-    if (typeof window.CNAE_DATA === 'undefined' || typeof window.CNAE_TAX_DATA === 'undefined') {
+    if (typeof window.CNAE_DATA === 'undefined') {
       document.getElementById('cnaeContent').innerHTML = '<div style="padding:40px;text-align:center;color:var(--red)">Erro ao carregar base CNAE</div>';
       return;
     }
+    if (typeof window.populateAutoTaxData === 'function') window.populateAutoTaxData();
     this.baseOficial = window.CNAE_DATA;
     this.baseTributaria = this._loadTaxData() || window.CNAE_TAX_DATA;
     this._buildLookup();
@@ -1122,6 +1117,11 @@ const CNAE = {
       +'<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;border-bottom:1px solid #f0f0f0"><span style="color:var(--text-light)">IPI</span><span style="font-weight:600">'+(tax.incidencia_ipi===null?'—':(tax.incidencia_ipi?'Sim':'Não'))+'</span></div>'
       +'<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;border-bottom:1px solid #f0f0f0"><span style="color:var(--text-light)">Revisão</span><span style="font-weight:600">'+(tax.data_revisao||'—')+'</span></div>'
       +'</div>';
+    // CBS Reforma treatment
+    const cbs = window.getCbsTreatment ? window.getCbsTreatment(codigo) : { desc: '—' };
+    const cbsColors = { padrao: 'var(--blue)', reduzida: 'var(--amber)', zero: 'var(--green)' };
+    const cbsBg = { padrao: '#E8F0FE', reduzida: '#FEF4E5', zero: '#E6F5EE' };
+    html += '<div style="margin-top:12px;padding:10px 12px;border-radius:4px;background:'+(cbsBg[cbs.tipo]||'#F8F9FA')+';border:1px solid '+(cbsColors[cbs.tipo]||'var(--border)')+'"><strong style="color:'+(cbsColors[cbs.tipo]||'var(--text)')+'">Reforma Tributária CBS:</strong> '+cbs.desc+'</div>';
     if (tax.observacoes) html+='<div style="background:var(--amber-bg);border:1px solid #F0D4A0;border-radius:4px;padding:8px 10px;font-size:12px;color:#664d00;margin-top:8px"><strong>Observações</strong><br>'+tax.observacoes+'</div>';
     if (tax.base_legal) html+='<div style="background:var(--blue-bg);border:1px solid #B8D4F0;border-radius:4px;padding:8px 10px;font-size:12px;color:#0d47a1;margin-top:8px"><strong>Base Legal</strong><br>'+tax.base_legal+'</div>';
     html+='<div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">'
@@ -1538,6 +1538,12 @@ function calc() {
   document.getElementById('indDiffMes').textContent=fmtMoeda(economiaMensal);
   document.getElementById('indCarga').textContent=fmtPct(Math.min(snTotal,lpTotal)/rbt12);
 
+  // Determina alíquota CBS efetiva baseada no CNAE
+  const cnaeCbs = window.getCbsTreatment ? window.getCbsTreatment(cnae) : { tipo: 'padrao', fator: 1 };
+  const aliqCbsBase = (parseFloat(document.getElementById('refAliqCbs').value) || 8.8) / 100;
+  const aliqCbsEfetiva = cnaeCbs.fator ? aliqCbsBase * cnaeCbs.fator : aliqCbsBase;
+  const cbsLabelCnae = cnaeCbs.desc || fmtPct(aliqCbsEfetiva);
+
   // CBS Card - sync reforma data and read precomputed values
   try { refSyncFromCalc(); } catch(e) { console.warn('Reforma sync error:',e); }
   const credTotalEl=document.getElementById('refCredTotal');
@@ -1545,10 +1551,10 @@ function calc() {
   const credTotalCbs=parseFloat(credTotalTxt)||0;
   const aliqCbs=(parseFloat(document.getElementById('refAliqCbs').value)||8.8)/100;
 
-  document.getElementById('cbsAliqLabel').textContent=fmtPct(aliqCbs);
+  document.getElementById('cbsAliqLabel').textContent=fmtPct(aliqCbsEfetiva) + ' (' + cbsLabelCnae.split(' ').slice(0,3).join(' ').replace(/[()]/g,'') + ')';
   document.getElementById('cbsReceita').textContent=document.getElementById('refReceita').value?fmtMoeda(parseFloat(document.getElementById('refReceita').value)):fmtMoeda(rbt12);
   const refReceitaVal=parseFloat(document.getElementById('refReceita').value)||rbt12;
-  const cbsBrutaCalc=refReceitaVal*aliqCbs;
+  const cbsBrutaCalc=refReceitaVal*aliqCbsEfetiva;
   document.getElementById('cbsBruta').textContent=fmtMoeda(cbsBrutaCalc);
   document.getElementById('cbsCreditos').textContent=credTotalCbs>0?fmtMoeda(credTotalCbs):'Não informados';
   document.getElementById('cbsLiquida').textContent=document.getElementById('refCbsLiquida').textContent;
@@ -1556,10 +1562,10 @@ function calc() {
   document.getElementById('cbsAliqEfetiva').textContent=fmtPct(rbt12>0?cbsLiquidaV/rbt12:0);
   document.getElementById('cbsTotal').textContent=fmtMoeda(cbsLiquidaV);
   document.getElementById('cbsMedia').textContent=fmtMoeda(cbsLiquidaV/12);
-  document.getElementById('cbsAliquotaDisplay').textContent=fmtPct(aliqCbs);
+  document.getElementById('cbsAliquotaDisplay').textContent=fmtPct(aliqCbsEfetiva);
   document.getElementById('cbsNotaRodape').textContent=credTotalCbs>0
-    ?'Estimativa preliminar baseada em alíquota CBS de '+(aliqCbs*100).toFixed(1)+'% e créditos informados.'
-    :'Estimativa bruta, sem consideração de créditos da CBS.';
+    ?'Estimativa baseada em alíquota CBS de '+(aliqCbsEfetiva*100).toFixed(1)+'% ('+cbsLabelCnae+') e créditos informados.'
+    :'Estimativa bruta, sem consideração de créditos da CBS. Alíquota: '+(aliqCbsEfetiva*100).toFixed(1)+'% ('+cbsLabelCnae+').';
 
   // CBS Decision section
   const pisCofinsTotalCbs=parseFloat(document.getElementById('refAtualTotal').textContent.replace(/[^\d,]/g,'').replace(',','.'))||(pis+cofins);
@@ -1574,9 +1580,10 @@ function calc() {
   decVarEl.textContent=(impactoAnual>=0?'+':'')+fmtPct(Math.abs(impactoPctCbs));
   decVarEl.style.color=impactoAnual>0?'var(--red)':(impactoAnual<0?'var(--green)':'var(--text)');
   let cbsConc='';
-  if (credTotalCbs===0) cbsConc='O valor apresentado corresponde a uma estimativa bruta da CBS. A apuração definitiva do impacto depende da identificação das aquisições que permitirão apropriação de créditos.';
-  else if (impactoAnual>0) cbsConc='Considerando a alíquota estimada de '+(aliqCbs*100).toFixed(1)+'% e os créditos atualmente informados, a CBS líquida poderá superar o valor atual de PIS e COFINS em '+fmtMoeda(impactoAnual)+' por ano.';
-  else if (impactoAnual<0) cbsConc='Considerando a alíquota estimada de '+(aliqCbs*100).toFixed(1)+'% e os créditos atualmente informados, a CBS líquida poderá reduzir a carga federal sobre o consumo em '+fmtMoeda(Math.abs(impactoAnual))+' por ano.';
+  const cbsNota = '(' + cbsLabelCnae + ')';
+  if (credTotalCbs===0) cbsConc='O valor apresentado corresponde a uma estimativa bruta da CBS ' + cbsNota + '. A apuração definitiva do impacto depende da identificação das aquisições que permitirão apropriação de créditos.';
+  else if (impactoAnual>0) cbsConc='Considerando a alíquota de '+(aliqCbsEfetiva*100).toFixed(1)+'% '+cbsNota+' e os créditos atualmente informados, a CBS líquida poderá superar o valor atual de PIS e COFINS em '+fmtMoeda(impactoAnual)+' por ano.';
+  else if (impactoAnual<0) cbsConc='Considerando a alíquota de '+(aliqCbsEfetiva*100).toFixed(1)+'% '+cbsNota+' e os créditos atualmente informados, a CBS líquida poderá reduzir a carga federal sobre o consumo em '+fmtMoeda(Math.abs(impactoAnual))+' por ano.';
   else cbsConc='A diferença estimada entre o modelo atual e a CBS é reduzida. O resultado final dependerá da regulamentação aplicável.';
   document.getElementById('cbsDecParecer').textContent=cbsConc;
 
@@ -2000,12 +2007,6 @@ function exportPDF() {
   if (cnae) alerts.push('Confirmar se a atividade corresponde ao CNAE '+cnae+' informado');
   if (rbt12>4800000) alerts.push('Receita acima do limite do SN (R$ 4,8M) — verificar sublimite');
 
-  const logoData=(()=>{
-    const img=document.querySelector('.dash-header .logo-area img');
-    if (img&&img.src&&img.src!==window.location.href) return img.src;
-    return '';
-  })();
-
   const now=new Date();
   const dataStr=now.toLocaleDateString('pt-BR')+' '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   const pag='<span class="pgn">Página <span class="page"></span></span>';
@@ -2063,7 +2064,7 @@ function exportPDF() {
 
     // HEADER
     +'<div class="rep-hdr"><div class="l"><div class="t">Compare Tributo</div><div class="s">Simples Nacional \u00D7 Lucro Presumido</div><div class="dt">'+dataStr+'</div></div>'
-    +(logoData?'<div class="r"><img src="'+logoData+'" alt="Logo"></div>':'<div class="r" style="width:140px"></div>')
+    +'<div class="r" style="width:140px"></div>'
     +'</div>'
 
     // IDENTIFICATION
