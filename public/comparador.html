@@ -321,15 +321,15 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
 
 <!-- TABS -->
 <div class="tabs">
-  <button class="tab active" onclick="showTab('executivo')"><span class="icon">&#9632;</span> Dashboard</button>
-  <button class="tab" onclick="showTab('dados')"><span class="icon">&#9881;</span> Dados</button>
+  <button class="tab active" onclick="showTab('dados')"><span class="icon">&#9881;</span> Dados</button>
+  <button class="tab" onclick="showTab('executivo')"><span class="icon">&#9632;</span> Dashboard</button>
   <button class="tab" onclick="showTab('cnae')"><span class="icon">&#9746;</span> CNAE</button>
   <button class="tab" onclick="showTab('cenarios')"><span class="icon">&#8644;</span> Cenários</button>
   <button class="tab" onclick="showTab('reforma')"><span class="icon">&#9733;</span> Reforma Tributária</button>
 </div>
 
 <!-- ===== DASHBOARD ===== -->
-<div class="panel active" id="panel-executivo">
+<div class="panel" id="panel-executivo">
 
   <div class="dash-header">
     <div class="dash-top">
@@ -672,6 +672,7 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
   </div>
   <div class="btn-row">
     <button class="btn btn-success" onclick="calcularECarregar()">&#10003; Calcular e Ver Dashboard</button>
+    <button class="btn btn-primary" onclick="compararComCBS()">&#9733; Reforma Tributária</button>
     <button class="btn btn-secondary" onclick="salvarDados()">Salvar Dados</button>
     <button class="btn btn-secondary" onclick="limparDados()">Limpar</button>
   </div>
@@ -1855,6 +1856,15 @@ function showTab(name) {
 }
 
 function calcularECarregar() { calc(); showTab('executivo'); }
+
+function compararComCBS() {
+  calc();
+  const rbt = parseFloat(document.getElementById('rbt12').textContent.replace(/[^\d,]/g,'').replace(',','.')) || 0;
+  document.getElementById('refReceita').value = Math.round(rbt);
+  document.getElementById('refAliqCbs').value = 8.8;
+  calcReforma();
+  showTab('reforma');
+}
 function limparDados() {
   if (!confirm('Limpar todos os dados?')) return;
   document.getElementById('razao').value='';
@@ -2128,6 +2138,25 @@ function refSyncFromCalc() {
   if (receitaEl&&!receitaEl.value) receitaEl.value=Math.round(parseFloat(rbt)||0).toString();
   calcReforma();
 }
+
+// ===== CNPJ AUTO-FILL via postMessage =====
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'cnpjData') {
+    const d = e.data.data;
+    if (d.razao_social) document.getElementById('razao').value = d.razao_social;
+    if (d.nome_fantasia) document.getElementById('fantasia').value = d.nome_fantasia;
+    if (d.cnpj) document.getElementById('cnpj').value = d.cnpj;
+    if (d.cnae_fiscal_descricao) document.getElementById('atividade').value = d.cnae_fiscal_descricao;
+    if (d.cnae_fiscal) document.getElementById('cnae').value = d.cnae_fiscal;
+    if (d.municipio) document.getElementById('municipio').value = d.municipio;
+    if (d.uf) document.getElementById('estado').value = d.uf;
+    if (d.opcao_pelo_simples !== undefined) {
+      document.getElementById('regime').value = d.opcao_pelo_simples ? 'Simples Nacional' : 'Lucro Presumido';
+    }
+    calc();
+    showTab('dados');
+  }
+});
 
 // ===== INIT =====
 initRevTable();

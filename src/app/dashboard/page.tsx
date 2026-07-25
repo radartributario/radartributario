@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
@@ -11,6 +11,7 @@ export default function DashboardPage() {
   const [cnpjError, setCnpjError] = useState("");
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [tab, setTab] = useState<"cnpj" | "calculadora">("cnpj");
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -59,6 +60,19 @@ export default function DashboardPage() {
     setCnpjLoading(false);
   };
 
+  const sendCnpjToIframe = () => {
+    if (cnpjData && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: 'cnpjData', data: cnpjData }, '*');
+    }
+  };
+
+  const handleTabChange = (newTab: "cnpj" | "calculadora") => {
+    setTab(newTab);
+    if (newTab === "calculadora") {
+      setTimeout(sendCnpjToIframe, 500);
+    }
+  };
+
   const formatCnpj = (v: string) => {
     const d = v.replace(/\D/g, "").slice(0, 14);
     return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4/$5");
@@ -86,7 +100,7 @@ export default function DashboardPage() {
         </div>
         <nav className="flex-1 p-4 space-y-1">
           <button
-            onClick={() => setTab("cnpj")}
+            onClick={() => handleTabChange("cnpj")}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               tab === "cnpj"
                 ? "bg-blue-50 text-blue-700"
@@ -99,7 +113,7 @@ export default function DashboardPage() {
             Consultar CNPJ
           </button>
           <button
-            onClick={() => setTab("calculadora")}
+            onClick={() => handleTabChange("calculadora")}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               tab === "calculadora"
                 ? "bg-blue-50 text-blue-700"
@@ -234,7 +248,7 @@ export default function DashboardPage() {
                     )}
                     <div className="pt-2">
                       <button
-                        onClick={() => setTab("calculadora")}
+                        onClick={() => handleTabChange("calculadora")}
                         className="text-sm bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                       >
                         Ir para Calculadora
@@ -270,6 +284,7 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <iframe
+                  ref={iframeRef}
                   src="/comparador.html"
                   className="w-full flex-1 border-0 rounded-lg"
                   title="Calculadora Tributária"
