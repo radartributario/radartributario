@@ -27,6 +27,7 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
 .tab:hover{color:white;background:rgba(255,255,255,0.08)}
 .tab.active{color:white;font-weight:600}
 .tab.active::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:3px;background:var(--accent);border-radius:3px 3px 0 0}
+.cmp-btn.active{background:var(--primary)!important;color:#fff!important;border-color:var(--primary)!important}
 .tab .icon{display:inline-block;margin-right:6px}
 
 .panel{display:none;padding:0}
@@ -321,7 +322,6 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
   <button class="tab" onclick="showTab('executivo')"><span class="icon">&#9632;</span> Dashboard</button>
   <button class="tab" onclick="showTab('cnae')"><span class="icon">&#9746;</span> CNAE</button>
   <button class="tab" onclick="showTab('cenarios')"><span class="icon">&#8644;</span> Cenários</button>
-  <button class="tab" onclick="showTab('reforma')"><span class="icon">&#9733;</span> Reforma Tributária</button>
 </div>
 
 <!-- ===== DASHBOARD ===== -->
@@ -374,6 +374,13 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
         <span class="kpi-tag" id="kpiEcoTag">—</span>
       </div>
     </div>
+  </div>
+
+  <!-- Comparison mode toggle -->
+  <div style="display:flex;gap:8px;padding:8px 32px;align-items:center">
+    <span style="font-size:12px;color:var(--text-light)">Comparar:</span>
+    <button class="cmp-btn active" id="cmpSnLp" onclick="setCompareMode('snlp')" style="font-size:12px;padding:4px 12px;border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#fff">SN × LP</button>
+    <button class="cmp-btn" id="cmpRefLp" onclick="setCompareMode('reflp')" style="font-size:12px;padding:4px 12px;border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#fff">Reforma × LP</button>
   </div>
 
   <!-- Comparison Cards -->
@@ -501,6 +508,7 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
         <div class="row"><span class="l">Média Mensal</span><span class="v" id="cbsMedia">R$ 0,00</span></div>
         <div style="font-size:8px;color:#999;padding-top:4px;border-top:1px solid var(--border);margin-top:4px">
           <span id="cbsNotaRodape">Estimativa preliminar baseada em alíquota CBS de 8,8%.</span>
+          <button onclick="showTab('reforma')" style="display:block;margin-top:4px;font-size:9px;padding:2px 6px;background:none;border:1px solid #ccc;border-radius:4px;cursor:pointer;color:#666">Configurar premissas</button>
         </div>
       </div>
     </div>
@@ -1646,7 +1654,8 @@ function calc() {
   const credTotalCbs=parseFloat(credTotalTxt)||0;
   const aliqCbs=(parseFloat(document.getElementById('refAliqCbs').value)||8.8)/100;
 
-  document.getElementById('cbsAliqLabel').textContent=fmtPct(aliqCbsEfetiva) + ' (' + cbsLabelCnae.split(' ').slice(0,3).join(' ').replace(/[()]/g,'') + ')';
+  const cbsDescClean = cbsLabelCnae.split(' ').slice(0,3).join(' ').replace(/[()]/g,'').replace(/Alíq\.?\s*Padrão\s*\d+[.,]\d+%/i,'').trim();
+  document.getElementById('cbsAliqLabel').textContent = cbsDescClean ? fmtPct(aliqCbsEfetiva) + ' (' + cbsDescClean + ')' : fmtPct(aliqCbsEfetiva);
   document.getElementById('cbsReceita').textContent=document.getElementById('refReceita').value?fmtMoeda(parseFloat(document.getElementById('refReceita').value)):fmtMoeda(rbt12);
   const refReceitaVal=parseFloat(document.getElementById('refReceita').value)||rbt12;
   const cbsBrutaCalc=refReceitaVal*aliqCbsEfetiva;
@@ -2007,7 +2016,19 @@ function compararComCBS() {
   document.getElementById('refReceita').value = Math.round(rbt);
   document.getElementById('refAliqCbs').value = 8.8;
   calcReforma();
-  showTab('reforma');
+  setCompareMode('reflp');
+  showTab('executivo');
+}
+
+function setCompareMode(mode) {
+  const snCard = document.getElementById('snCard');
+  const lpCard = document.getElementById('lpCard');
+  const cbsCard = document.getElementById('cbsCard');
+  document.getElementById('cmpSnLp').classList.toggle('active', mode === 'snlp');
+  document.getElementById('cmpRefLp').classList.toggle('active', mode === 'reflp');
+  snCard.style.display = mode === 'snlp' ? '' : 'none';
+  cbsCard.style.display = mode === 'reflp' ? '' : 'none';
+  lpCard.style.display = '';
 }
 function limparDados() {
   if (!confirm('Limpar todos os dados?')) return;
