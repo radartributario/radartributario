@@ -61,7 +61,8 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
 .kpi-card.economia .kpi-tag.lp-tag{background:var(--lp-bg);color:var(--lp)}
 
 /* COMPARISON CARDS */
-.comparison-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:24px 32px}
+.comparison-row{display:flex;gap:20px;padding:24px 32px;flex-wrap:wrap;justify-content:center}
+.comparison-row .comp-card{flex:0 0 320px;min-width:280px}
 .comp-card{border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;height:100%}
 .comp-card .comp-header{padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
 .comp-card .comp-header h3{font-size:15px;font-weight:700;letter-spacing:-0.2px}
@@ -269,8 +270,8 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
   .dash-header{padding:20px 24px}
   .dash-header .dash-grid{gap:12px}
   .kpi-row{grid-template-columns:1fr;padding:20px}
-  .comparison-row{grid-template-columns:1fr 1fr;padding:20px}
-  .comparison-row .comp-card-cbs{grid-column:1/-1}
+  .comparison-row{padding:20px}
+  .comparison-row .comp-card{flex:0 0 280px}
   .meta-row{grid-template-columns:1fr;padding:0 20px 16px}
   .indicator-grid{grid-template-columns:1fr 1fr}
   .cnae-layout{grid-template-columns:1fr;padding:16px 20px}
@@ -288,8 +289,8 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
   .results-grid{grid-template-columns:1fr}
   .btn-row{padding:0 20px 16px}
   .rec-card{margin:0 20px 16px}
-  .comparison-row{grid-template-columns:1fr;padding:16px 20px}
-  .comparison-row .comp-card-cbs{grid-column:auto}
+  .comparison-row{padding:16px 20px}
+  .comparison-row .comp-card{flex:0 0 100%}
   #cbsDecisionCard .rec-body>div{grid-template-columns:1fr!important}
   .alert-row{padding:0 20px 16px}
   .scenario-grid{grid-template-columns:1fr;padding:0 20px 16px}
@@ -381,6 +382,7 @@ body{background:#F0F2F5;font-family:var(--font);color:var(--text);-webkit-font-s
     <span style="font-size:12px;color:var(--text-light)">Comparar:</span>
     <button class="cmp-btn active" id="cmpSnLp" onclick="setCompareMode('snlp')" style="font-size:12px;padding:4px 12px;border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#fff">SN × LP</button>
     <button class="cmp-btn" id="cmpRefLp" onclick="setCompareMode('reflp')" style="font-size:12px;padding:4px 12px;border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#fff">Reforma × LP</button>
+    <button class="cmp-btn" id="cmpAll" onclick="setCompareMode('all')" style="font-size:12px;padding:4px 12px;border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#fff">Ver todos</button>
   </div>
 
   <!-- Comparison Cards -->
@@ -2024,11 +2026,14 @@ function setCompareMode(mode) {
   const snCard = document.getElementById('snCard');
   const lpCard = document.getElementById('lpCard');
   const cbsCard = document.getElementById('cbsCard');
+  const row = document.querySelector('.comparison-row');
   document.getElementById('cmpSnLp').classList.toggle('active', mode === 'snlp');
   document.getElementById('cmpRefLp').classList.toggle('active', mode === 'reflp');
-  snCard.style.display = mode === 'snlp' ? '' : 'none';
-  cbsCard.style.display = mode === 'reflp' ? '' : 'none';
+  document.getElementById('cmpAll').classList.toggle('active', mode === 'all');
+  snCard.style.display = (mode === 'snlp' || mode === 'all') ? '' : 'none';
+  cbsCard.style.display = (mode === 'reflp' || mode === 'all') ? '' : 'none';
   lpCard.style.display = '';
+  row.style.justifyContent = mode === 'all' ? 'space-between' : 'center';
 }
 function limparDados() {
   if (!confirm('Limpar todos os dados?')) return;
