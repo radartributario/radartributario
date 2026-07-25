@@ -227,14 +227,6 @@ export default function DashboardPage() {
                         />
                         <span>
                           {cnpjData.opcao_pelo_simples
-                            ? "Optante Simples Nacional"
-                            : "Não optante Simples Nacional"}
-                        </span>
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-blue-500" />
-                        <span>
-                          {cnpjData.opcao_pelo_simples
                             ? "Simples Nacional"
                             : "Lucro Presumido / Real"}
                         </span>
