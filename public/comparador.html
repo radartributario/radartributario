@@ -1370,7 +1370,12 @@ function getCbsLegalBasis(codigo) {
 }
 
 function getAnexoSN(cnae,classe,fatorR) {
-  const tax=window.CNAE_TAX_DATA?.[cnae];
+  // Tenta lookup por código completo, depois pela classe
+  let tax = window.CNAE_TAX_DATA?.[cnae];
+  if (!tax && classe) {
+    const match = Object.keys(window.CNAE_TAX_DATA || {}).find(k => k.startsWith(classe + '/'));
+    if (match) tax = window.CNAE_TAX_DATA[match];
+  }
   if (tax?.anexo_simples&&tax?.status!='nao_classificado') return tax.anexo_simples;
   if (CNAE_ANEXO_IV.has(classe)) return 'Anexo IV';
   if (classe.startsWith('7719')||classe.startsWith('7711')||classe.startsWith('772')) return 'Anexo III';
@@ -1700,9 +1705,20 @@ function calc() {
     }
   }
 
-  // CNAE description
-  if (CNAE.loaded&&CNAE.lookupMap[cnae]) document.getElementById('cnaeDesc').value=CNAE.lookupMap[cnae].descricao;
-  else document.getElementById('cnaeDesc').value='— CNAE não encontrado na base —';
+  // CNAE description - busca por classe (ex: "6201-1") ou código completo (ex: "6201-1/01")
+  let cnaeDesc = '— CNAE não encontrado na base —';
+  if (CNAE.loaded && cnae) {
+    const lookup = CNAE.lookupMap;
+    if (lookup[cnae]) {
+      cnaeDesc = lookup[cnae].descricao;
+    } else {
+      // Tenta encontrar pela classe (sem subclasse)
+      const classe = cnae.split('/')[0];
+      const match = Object.keys(lookup).find(k => k.startsWith(classe + '/'));
+      if (match) cnaeDesc = lookup[match].descricao;
+    }
+  }
+  document.getElementById('cnaeDesc').value = cnaeDesc;
 
   // Scenario sync
   scenarioSyncLive();
