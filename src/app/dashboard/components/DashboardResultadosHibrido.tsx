@@ -36,7 +36,7 @@ export default function DashboardResultadosHibrido({
   if (r.error) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <p className="text-lg text-red-600 font-medium">Erro no c\u00E1lculo: {(r.error as string)}</p>
+        <p className="text-lg text-red-600 font-medium">Erro no cálculo: {(r.error as string)}</p>
         <button onClick={onEdit}
           className="mt-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 px-6 rounded-xl font-semibold transition-colors">
           Editar dados
@@ -59,7 +59,7 @@ export default function DashboardResultadosHibrido({
   if (!snTotal && !hibTotal) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <p className="text-base text-slate-400">Nenhum resultado dispon\u00EDvel. Preencha os dados e gere o diagn\u00F3stico.</p>
+        <p className="text-base text-slate-400">Nenhum resultado disponível. Preencha os dados e gere o diagnóstico.</p>
       </div>
     );
   }
@@ -77,8 +77,8 @@ export default function DashboardResultadosHibrido({
     <div className="space-y-6">
 
       <HeaderComparacao
-        titulo={`Compara\u00E7\u00E3o: Simples Tradicional \u00D7 Simples H\u00EDbrido (${ano})`}
-        descricao="No Simples H\u00EDbrido, a CBS deixa de ser recolhida dentro do DAS e passa a ser apurada pelo regime regular. O DAS \u00E9 reduzido pela parcela correspondente da CBS e, posteriormente, \u00E9 adicionada a CBS l\u00EDquida apurada fora do DAS."
+        titulo={`Comparação: Simples Tradicional × Simples Híbrido (${ano})`}
+        descricao="No Simples Híbrido, a CBS deixa de ser recolhida dentro do DAS e passa a ser apurada pelo regime regular. O DAS é reduzido pela parcela correspondente da CBS e, posteriormente, é adicionada a CBS líquida apurada fora do DAS."
         icone={<Scale className="w-7 h-7 text-blue-300 mt-0.5 shrink-0" />}
       />
 
@@ -94,11 +94,11 @@ export default function DashboardResultadosHibrido({
           icone: <Receipt className="w-5 h-5 text-blue-600" />,
           linhas: [
             { label: "Total mensal", valor: "R$ " + fmt(snTotal / 12) },
-            { label: "Al\u00EDquota efetiva", valor: fmtPct(aliqSn), cor: "text-blue-700" },
+            { label: "Alíquota efetiva", valor: fmtPct(aliqSn), cor: "text-blue-700" },
           ]
         }}
         card2={{
-          titulo: "Simples H\u00EDbrido",
+          titulo: "Simples Híbrido",
           total: hibTotal,
           rotuloTotal: "Total anual estimado",
           corBorda: "border-amber-200",
@@ -108,7 +108,7 @@ export default function DashboardResultadosHibrido({
           icone: <TrendingUp className="w-5 h-5 text-amber-600" />,
           linhas: [
             { label: "Total mensal", valor: "R$ " + fmt(hibTotal / 12) },
-            { label: "Al\u00EDquota efetiva", valor: fmtPct(aliqHib), cor: "text-amber-800" },
+            { label: "Alíquota efetiva", valor: fmtPct(aliqHib), cor: "text-amber-800" },
           ]
         }}
         cardImpacto={{
@@ -127,11 +127,11 @@ export default function DashboardResultadosHibrido({
         <MemoriaCalculo
           etapas={[
             { label: "DAS integral", valor: "R$ " + fmt(typeof hib.dasIntegral === "number" ? hib.dasIntegral : 0) },
-            { label: "(\u2013) CBS retirada do DAS", valor: "\u2013R$ " + fmt(typeof hib.parcelaCbsRetiradaDoDas === "number" ? hib.parcelaCbsRetiradaDoDas : 0), cor: "bg-amber-50 border-amber-200" },
+            { label: "(–) CBS retirada do DAS", valor: "–R$ " + fmt(typeof hib.parcelaCbsRetiradaDoDas === "number" ? hib.parcelaCbsRetiradaDoDas : 0), cor: "bg-amber-50 border-amber-200" },
             { label: "DAS ajustado", valor: "R$ " + fmt(typeof hib.dasReduzido === "number" ? hib.dasReduzido : 0), cor: "bg-slate-100 border-slate-300" },
             { operador: "+" },
-            { label: "CBS l\u00EDquida", valor: "R$ " + fmt(typeof cbs.liquida === "number" ? cbs.liquida : 0), cor: "bg-cyan-50 border-cyan-200" },
-            { label: "Total Simples H\u00EDbrido", valor: "R$ " + fmt(hibTotal), cor: "bg-gradient-to-r from-amber-50 to-orange-50 border-amber-300 font-bold" },
+            { label: "CBS líquida", valor: "R$ " + fmt(typeof cbs.liquida === "number" ? cbs.liquida : 0), cor: "bg-cyan-50 border-cyan-200" },
+            { label: "Total Simples Híbrido", valor: "R$ " + fmt(hibTotal), cor: "bg-gradient-to-r from-amber-50 to-orange-50 border-amber-300 font-bold" },
           ]}
         />
       )}
@@ -163,12 +163,12 @@ export default function DashboardResultadosHibrido({
       <div className="flex flex-col sm:flex-row gap-3">
         <button onClick={onEdit}
           className="flex-1 bg-white border-2 border-slate-300 hover:bg-slate-50 text-slate-700 py-4 rounded-2xl text-base font-semibold transition-colors">
-          Editar dados da simula\u00E7\u00E3o
+          Editar dados da simulação
         </button>
         {onGeneratePdf && (
           <button onClick={handlePdf} type="button" disabled={pdfLoading || !confirmed}
             className="flex-1 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-2xl text-base font-semibold transition-colors">
-            {pdfLoading ? "Gerando relat\u00F3rio..." : !confirmed ? "Confirme as premissas acima" : "Gerar relat\u00F3rio em PDF"}
+            {pdfLoading ? "Gerando relatório..." : !confirmed ? "Confirme as premissas acima" : "Gerar relatório em PDF"}
           </button>
         )}
       </div>

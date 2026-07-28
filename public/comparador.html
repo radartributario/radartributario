@@ -1257,7 +1257,7 @@ const CNAE = {
         for (const w of words) {
           if (w.length<2) continue;
           if (desc.includes(w)) matchCount++;
-          else if (desc.normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(w)) matchCount++;
+          else if (desc.normalize('NFD').replace(/[̀-ͯ]/g,'').includes(w)) matchCount++;
           else { matchCount=-999; break; }
         }
         if (matchCount>0) { score=matchCount*10; if (desc.startsWith(words[0])) score+=20; if (desc.includes(q)) score+=30; }
@@ -1533,7 +1533,7 @@ function toggleMemoria(id) {
   if (!body||!arrow) return;
   const isOpen=body.style.display!=='none';
   body.style.display=isOpen?'none':'block';
-  arrow.textContent=isOpen?'\u25B6':'\u25BC';
+  arrow.textContent=isOpen?'▶':'▼';
 }
 function onConfCheck() {
   document.getElementById('btnGerarPdf').disabled=!document.getElementById('confCheckbox').checked;
@@ -1587,6 +1587,36 @@ function fmt(v) { const [i,d]=v.toFixed(2).split('.'); return i.replace(/\B(?=(\
 function fmtMoeda(v) { return 'R$ '+fmt(v); }
 function fmtDecimal(v) { return fmt(v); }
 function fmtPct(v) { return (v*100).toFixed(2).replace('.',',')+'%'; }
+
+// parseCurrencyPtBR — converte string monetária pt-BR para número
+// Aceita: "1.200.000,00", "15000.50", "R$ 15.500,00", "50000", "50.000", "0,00", ""
+// Rejeita: negativo, NaN, Infinity, string inválida → retorna 0
+function parseCurrencyPtBR(str) {
+  if (typeof str !== 'string' || !str) return 0;
+  var s = str.replace(/[R$\s]/g, '').trim();
+  if (!s) return 0;
+  // Se tem vírgula → pt-BR: remove pontos, troca vírgula por ponto
+  if (s.indexOf(',') >= 0) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else if (s.indexOf('.') >= 0) {
+    // Sem vírgula, com ponto(s) — distinguir pt-BR (ponto como separador de milhar)
+    // de notação decimal simples (ponto como decimal)
+    var dotCount = s.split('.').length - 1;
+    if (dotCount > 1) {
+      // Múltiplos pontos → pt-BR (ex: 1.200.000)
+      s = s.replace(/\./g, '');
+    } else {
+      // Um ponto apenas: olhar dígitos após o ponto
+      var afterDot = s.split('.')[1] || '';
+      if (afterDot.length === 3) {
+        // 3 dígitos após o ponto → separador de milhar pt-BR (ex: 50.000)
+        s = s.replace('.', '');
+      } // senão, notação decimal simples (ex: 15000.50) — mantém
+    }
+  }
+  var n = parseFloat(s);
+  return isFinite(n) && n >= 0 ? n : 0;
+}
 
 const CNAE_FATOR_R=new Set([
   // Serviços de TI (CNAE 2.0: divisão 62) — check digits corrigidos
@@ -1929,14 +1959,15 @@ function getCbsAliqEfetiva(cnae, aliqPadrao, confirmadoCondicional) {
   if (!reducao) {
     return { aliqEfetiva: aliqPadrao, reducao: null };
   }
-  if (reducao.condicional && confirmadoCondicional === false) {
-    return { aliqEfetiva: aliqPadrao, reducao: null };
+  // Condicional: só aplica quando o usuário CONFIRMA explicitamente
+  if (reducao.condicional && confirmadoCondicional !== true) {
+    return { aliqEfetiva: aliqPadrao, reducao: null, confirmacaoPendente: true };
   }
   var aliqEfetiva = aliqPadrao * (1 - reducao.pct);
   return {
     aliqEfetiva: aliqEfetiva,
     reducao: reducao,
-    confirmacaoPendente: reducao.condicional && confirmadoCondicional !== true
+    confirmacaoPendente: false
   };
 }
 
@@ -2496,7 +2527,7 @@ function calc() {
   recCard.className='rec-card';
   if (snTotal===0&&lpTotal===0) {
     recCard.className='rec-card';
-    recIcon.textContent='\u25C6'; recTitle.textContent='Decisão do Regime Atual'; recSub.textContent='Preencha os dados para gerar a recomendação';
+    recIcon.textContent='◆'; recTitle.textContent='Decisão do Regime Atual'; recSub.textContent='Preencha os dados para gerar a recomendação';
     recReason.textContent='Nenhum dado disponível para análise.'; recParecer.textContent='Acesse a aba "Dados" para iniciar a simulação.';
     return;
   }
@@ -2505,13 +2536,13 @@ function calc() {
   else recCard.classList.add('lp');
 
   if (diffClass==='pequena') {
-    recIcon.textContent='\u26A0\uFE0F'; recTitle.textContent='Atenção: Diferença Reduzida';
+    recIcon.textContent='⚠️'; recTitle.textContent='Atenção: Diferença Reduzida';
     recSub.textContent='A diferença entre os regimes é pequena. Considere outros fatores.';
     recReason.textContent='A economia estimada é de apenas '+fmtPct(diffPct)+' entre os regimes.';
     recParecer.textContent='Recomenda-se avaliar também obrigações acessórias, estrutura da folha, margem de lucro, créditos tributários e projeção de crescimento antes da decisão.';
   } else {
     if (eligSnBlocked) {
-      recIcon.textContent='\u26A0\uFE0F';
+      recIcon.textContent='⚠️';
       recTitle.textContent='Decisão: Lucro Presumido (SN não elegível)';
       recSub.textContent='Regime aplicável';
       recReason.textContent='A empresa não é elegível ao Simples Nacional por exceder o teto legal de R$ 4.800.000,00. O regime apurado para a operação é o Lucro Presumido com carga efetiva de '+fmtPct(lpAliquota)+'.';
@@ -2562,7 +2593,7 @@ function calc() {
     const recFatoresEl = document.getElementById('recFatores');
     if (recFatoresEl && fatores.length > 0) {
       recFatoresEl.style.display = 'block';
-      recFatoresEl.innerHTML = '<strong style="font-size:9px;color:#374151">Por que este regime foi recomendado?</strong><br>\u2022 ' + fatores.join('<br>\u2022 ');
+      recFatoresEl.innerHTML = '<strong style="font-size:9px;color:#374151">Por que este regime foi recomendado?</strong><br>• ' + fatores.join('<br>• ');
     }
   }
 
@@ -2641,9 +2672,9 @@ function calc() {
   if (recFatoresEl2 && recFatoresEl2.style.display !== 'none') {
     const cbsVerbo = cbsImpactoCalc < 0 ? 'reduzir' : (cbsImpactoCalc > 0 ? 'aumentar' : 'neutro');
     const cbsValor = Math.abs(cbsImpactoCalc);
-    if (cbsImpactoCalc > 0) recFatoresEl2.innerHTML += '<br>\u2022 A CBS poder\u00E1 <strong>superar</strong> o valor atual de PIS e COFINS em <strong>R$ '+fmtDecimal(cbsValor)+'</strong> por ano, elevando a carga federal';
-    else if (cbsImpactoCalc < 0) recFatoresEl2.innerHTML += '<br>\u2022 A CBS poder\u00E1 <strong>gerar redu\u00E7\u00E3o</strong> em rela\u00E7\u00E3o ao PIS e COFINS atuais de <strong>R$ '+fmtDecimal(cbsValor)+'</strong> por ano, aliviando a carga federal';
-    else recFatoresEl2.innerHTML += '<br>\u2022 A CBS n\u00E3o altera significativamente a carga federal no cen\u00E1rio informado';
+    if (cbsImpactoCalc > 0) recFatoresEl2.innerHTML += '<br>• A CBS poderá <strong>superar</strong> o valor atual de PIS e COFINS em <strong>R$ '+fmtDecimal(cbsValor)+'</strong> por ano, elevando a carga federal';
+    else if (cbsImpactoCalc < 0) recFatoresEl2.innerHTML += '<br>• A CBS poderá <strong>gerar redução</strong> em relação ao PIS e COFINS atuais de <strong>R$ '+fmtDecimal(cbsValor)+'</strong> por ano, aliviando a carga federal';
+    else recFatoresEl2.innerHTML += '<br>• A CBS não altera significativamente a carga federal no cenário informado';
   }
 
   // CBS Decision section
@@ -2699,7 +2730,7 @@ function calc() {
   const anexoNum=anexoSN.replace('Anexo ','');
   document.getElementById('legalSnEnquadramento').textContent='LC 123/2006, arts. 17-18';
   document.getElementById('legalSnAnexo').textContent='LC 123/2006, Anexo '+anexoNum;
-  document.getElementById('legalSnAliq').textContent='LC 123/2006, art. 18, \u00A71\u00BA-A';
+  document.getElementById('legalSnAliq').textContent='LC 123/2006, art. 18, §1º-A';
   // Base Legal dinâmica conforme regime
   const regimeLP = document.getElementById('regime').value;
   const pisCofinsLegal = (regimeLP === 'Lucro Presumido' || regimeLP === 'Lucro Real')
@@ -2763,7 +2794,7 @@ function calc() {
   else {
     na.style.display='none';
     for (const a of alerts) {
-      const icon=a.type==='warning'?'\u26A0\uFE0F':(a.type==='error'?'\u274C':'\u2139\uFE0F');
+      const icon=a.type==='warning'?'⚠️':(a.type==='error'?'❌':'ℹ️');
       const cls=a.type==='warning'?'warning':(a.type==='error'?'error':'info');
       const div=document.createElement('div'); div.className='alert-card '+cls;
       div.innerHTML='<span class="a-icon">'+icon+'</span>'+a.msg;
@@ -2842,11 +2873,11 @@ function calc() {
   if (elig.sn.elegivel) {
     document.getElementById('memLegalSnEnc').textContent='LC 123/2006, arts. 17-18';
     document.getElementById('memLegalSnAnexo').textContent='LC 123/2006, Anexo '+anexoNum;
-    document.getElementById('memLegalSnAliq').textContent='LC 123/2006, art. 18, \u00A71\u00BA-A';
+    document.getElementById('memLegalSnAliq').textContent='LC 123/2006, art. 18, §1º-A';
   } else {
-    document.getElementById('memLegalSnEnc').textContent='N\u00E3o aplic\u00E1vel (SN n\u00E3o eleg\u00EDvel)';
-    document.getElementById('memLegalSnAnexo').textContent='N\u00E3o aplic\u00E1vel';
-    document.getElementById('memLegalSnAliq').textContent='N\u00E3o aplic\u00E1vel';
+    document.getElementById('memLegalSnEnc').textContent='Não aplicável (SN não elegível)';
+    document.getElementById('memLegalSnAnexo').textContent='Não aplicável';
+    document.getElementById('memLegalSnAliq').textContent='Não aplicável';
   }
   const issLegal = tipoAtiv === 'servicos' ? 'LC 116/2003; ' : '';
   document.getElementById('memLegalLp').textContent=issLegal+'Lei 9.249/95, arts. 15 e 28; '+pisCofinsLegal;
@@ -3095,7 +3126,7 @@ function calcReforma() {
 
   const acEl=document.getElementById('refAlertasContent');
   if (refAlerts.length===0) acEl.innerHTML='<div class="ref-alert info">Nenhum alerta crítico identificado.</div>';
-  else acEl.innerHTML=refAlerts.slice(0,5).map(a=>'<div class="ref-alert '+a.t+'">'+(a.t==='warning'?'\u26A0 ':'\u2139 ')+a.m+'</div>').join('');
+  else acEl.innerHTML=refAlerts.slice(0,5).map(a=>'<div class="ref-alert '+a.t+'">'+(a.t==='warning'?'⚠ ':'ℹ ')+a.m+'</div>').join('');
 
   // Conclusão com base legal
   const cnaeRef = document.getElementById('cnae').value.trim();
@@ -3301,42 +3332,42 @@ function buildPDFHtml() {
   if (rbt12<=0) valErrors.push('RBT12 deve ser maior que zero.');
   const rbtFromInput=ni('rbt12Input');
   if (Math.abs(rbt12-rbtFromInput)>1) valErrors.push('RBT12 exibido ('+fmtMoeda(rbt12)+') difere do valor calculado ('+fmtMoeda(rbtFromInput)+').');
-  if (!ce||ce==='—') valErrors.push('CNAE n\u00E3o informado.');
-  if (!tipoAtiv||tipoAtiv==='—') valErrors.push('Tipo de atividade n\u00E3o definido.');
-  if (sn>0&&!anexo) valErrors.push('Anexo SN n\u00E3o classificado.');
+  if (!ce||ce==='—') valErrors.push('CNAE não informado.');
+  if (!tipoAtiv||tipoAtiv==='—') valErrors.push('Tipo de atividade não definido.');
+  if (sn>0&&!anexo) valErrors.push('Anexo SN não classificado.');
   const snTotalFromCalc=n('snTotal');
   const snDas=n('snDasAnual');
   const snSublimiteValor=n('snSublimiteValor');
-  if (sn>0&&snTotalFromCalc>0&&Math.abs(snTotalFromCalc-snDas-snSublimiteValor-n('snEncargosFora'))>0.02) valErrors.push('Soma do Simples Nacional n\u00E3o confere com total.');
+  if (sn>0&&snTotalFromCalc>0&&Math.abs(snTotalFromCalc-snDas-snSublimiteValor-n('snEncargosFora'))>0.02) valErrors.push('Soma do Simples Nacional não confere com total.');
   if (lp>0) {
     const lpComp=Number(n('lpIrpj15'))+Number(n('lpIrpjAdic'))+Number(n('lpCsll'))+Number(n('lpPisCof'))+Number(n('lpIss'))+Number(n('lpIcms'))+Number(n('lpEncargos'));
-    if (Math.abs(lpComp-lp)>0.02) valErrors.push('Soma dos componentes LP ('+fmtMoeda(lpComp)+') n\u00E3o fecha com total ('+fmtMoeda(lp)+').');
+    if (Math.abs(lpComp-lp)>0.02) valErrors.push('Soma dos componentes LP ('+fmtMoeda(lpComp)+') não fecha com total ('+fmtMoeda(lp)+').');
   }
   if (sn>0&&lp>0) {
     const mediaCalc=sn/12; const mediaCalcLp=lp/12;
-    if (Math.abs(mediaCalc-sm)>0.02) valErrors.push('M\u00E9dia SN ('+fmtMoeda(sm)+') n\u00E3o confere com total/12 ('+fmtMoeda(mediaCalc)+').');
-    if (Math.abs(mediaCalcLp-lm)>0.02) valErrors.push('M\u00E9dia LP ('+fmtMoeda(lm)+') n\u00E3o confere com total/12 ('+fmtMoeda(mediaCalcLp)+').');
+    if (Math.abs(mediaCalc-sm)>0.02) valErrors.push('Média SN ('+fmtMoeda(sm)+') não confere com total/12 ('+fmtMoeda(mediaCalc)+').');
+    if (Math.abs(mediaCalcLp-lm)>0.02) valErrors.push('Média LP ('+fmtMoeda(lm)+') não confere com total/12 ('+fmtMoeda(mediaCalcLp)+').');
   }
   // Consistency: dashboard memory panels × PDF values
   const memIcmsLiquido=n('memIcmsLiquido');
   const lpIcms=n('lpIcms');
-  if (memIcmsLiquido>0&&lpIcms>0&&Math.abs(memIcmsLiquido-lpIcms)>0.02) valErrors.push('ICMS l\u00EDquido na mem\u00F3ria ('+fmtMoeda(memIcmsLiquido)+') difere do card LP ('+fmtMoeda(lpIcms)+').');
+  if (memIcmsLiquido>0&&lpIcms>0&&Math.abs(memIcmsLiquido-lpIcms)>0.02) valErrors.push('ICMS líquido na memória ('+fmtMoeda(memIcmsLiquido)+') difere do card LP ('+fmtMoeda(lpIcms)+').');
   const memCbsLiquida=n('memCbsLiquida');
   const cbsLiquidaCard=n('cbsLiquida');
-  if (memCbsLiquida>0&&cbsLiquidaCard>0&&Math.abs(memCbsLiquida-cbsLiquidaCard)>0.02) valErrors.push('CBS l\u00EDquida na mem\u00F3ria ('+fmtMoeda(memCbsLiquida)+') difere do card CBS ('+fmtMoeda(cbsLiquidaCard)+').');
+  if (memCbsLiquida>0&&cbsLiquidaCard>0&&Math.abs(memCbsLiquida-cbsLiquidaCard)>0.02) valErrors.push('CBS líquida na memória ('+fmtMoeda(memCbsLiquida)+') difere do card CBS ('+fmtMoeda(cbsLiquidaCard)+').');
   const memTotalSn=n('confTotalSn');
-  if (memTotalSn>0&&sn>0&&Math.abs(memTotalSn-sn)>0.02) valErrors.push('Total SN na confer\u00EAncia ('+fmtMoeda(memTotalSn)+') difere do total calculado ('+fmtMoeda(sn)+').');
+  if (memTotalSn>0&&sn>0&&Math.abs(memTotalSn-sn)>0.02) valErrors.push('Total SN na conferência ('+fmtMoeda(memTotalSn)+') difere do total calculado ('+fmtMoeda(sn)+').');
   const memTotalLp=n('confTotalLp');
-  if (memTotalLp>0&&lp>0&&Math.abs(memTotalLp-lp)>0.02) valErrors.push('Total LP na confer\u00EAncia ('+fmtMoeda(memTotalLp)+') difere do total calculado ('+fmtMoeda(lp)+').');
+  if (memTotalLp>0&&lp>0&&Math.abs(memTotalLp-lp)>0.02) valErrors.push('Total LP na conferência ('+fmtMoeda(memTotalLp)+') difere do total calculado ('+fmtMoeda(lp)+').');
   if (valErrors.length>0) {
     console.error('PDF validation errors:',valErrors);
-    return '<div style="font-family:sans-serif;padding:40px;color:#c00"><h2>Erro ao gerar relat\u00F3rio</h2><p>Os seguintes problemas foram encontrados:</p><ul>'+valErrors.map(function(e){return '<li>'+e+'</li>';}).join('')+'</ul></div>';
+    return '<div style="font-family:sans-serif;padding:40px;color:#c00"><h2>Erro ao gerar relatório</h2><p>Os seguintes problemas foram encontrados:</p><ul>'+valErrors.map(function(e){return '<li>'+e+'</li>';}).join('')+'</ul></div>';
   }
 
   // ===== BUILD PDF HTML =====
   const now=new Date();
   const dataStr=now.toLocaleDateString('pt-BR')+' '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  const pag='<span class="pgn">P\u00E1gina <span class="page"></span></span>';
+  const pag='<span class="pgn">Página <span class="page"></span></span>';
 
   // CSS
   const css='@page{size:A4 portrait;margin:10mm 10mm 14mm 10mm}'
@@ -3398,14 +3429,14 @@ function buildPDFHtml() {
   const icmsDetailHtml = icmsVal>0 && icmsBase
     ? '<div class="box"><div class="bt">Detalhamento do ICMS</div>'
       +'<div class="bt2">'+icmsReceitaDesc+'</div>'
-      +'<div class="lr"><span class="lb">Base de c\u00E1lculo</span><span class="vl">'+icmsBase+'</span></div>'
-      +'<div class="lr"><span class="lb">Al\u00EDquota m\u00E9dia</span><span class="vl">'+icmsAliquotaDesc+'</span></div>'
-      +'<div class="lr"><span class="lb">ICMS bruto (d\u00E9bito)</span><span class="vl">'+icmsDebito+'</span></div>'
+      +'<div class="lr"><span class="lb">Base de cálculo</span><span class="vl">'+icmsBase+'</span></div>'
+      +'<div class="lr"><span class="lb">Alíquota média</span><span class="vl">'+icmsAliquotaDesc+'</span></div>'
+      +'<div class="lr"><span class="lb">ICMS bruto (débito)</span><span class="vl">'+icmsDebito+'</span></div>'
       +(parseFloat(icmsCredEst.replace(/[R$\s.]/g,'').replace(',','.'))>0
-        ? '<div class="lr"><span class="lb">Cr\u00E9ditos estimados</span><span class="vl">\u2212 '+icmsCredEst+'</span></div>'
+        ? '<div class="lr"><span class="lb">Créditos estimados</span><span class="vl">− '+icmsCredEst+'</span></div>'
         : '')
-      +'<div class="lr" style="font-weight:700;border-top:1px solid #ddd;padding-top:2px;margin-top:2px"><span class="lb">ICMS l\u00EDquido</span><span class="vl">'+icmsT+'</span></div>'
-      +'<div class="dp">ICMS estimado. N\u00E3o inclui ICMS-ST, DIFAL ou antecipa\u00E7\u00E3o tribut\u00E1ria. Consulte a legisla\u00E7\u00E3o estadual para valida\u00E7\u00E3o.</div></div>'
+      +'<div class="lr" style="font-weight:700;border-top:1px solid #ddd;padding-top:2px;margin-top:2px"><span class="lb">ICMS líquido</span><span class="vl">'+icmsT+'</span></div>'
+      +'<div class="dp">ICMS estimado. Não inclui ICMS-ST, DIFAL ou antecipação tributária. Consulte a legislação estadual para validação.</div></div>'
     : '';
 
   const snLabelPdf = (document.getElementById('snCardTitle')||{}).textContent || 'Simples Nacional';
@@ -3415,7 +3446,7 @@ function buildPDFHtml() {
 
   // SN composition HTML
   const snCompHtml = sn>0 && snCompTributos
-    ? '<div class="box"><div class="bt">Tributos inclu\u00EDdos no Simples Nacional</div>'
+    ? '<div class="box"><div class="bt">Tributos incluídos no Simples Nacional</div>'
       +'<div class="dp">O DAS do <strong>'+anexo+'</strong> inclui os seguintes tributos: <strong>'+snCompTributos+'</strong>.</div>'
       +'<div class="dp" style="font-size:7.5px;color:#888;margin-top:2px">'+snCompObs+'</div></div>'
     : '';
@@ -3424,7 +3455,7 @@ function buildPDFHtml() {
   const salMensal=ni('salarios'); const prolMensal=ni('prolabore');
   const folhaMensalVal=salMensal+prolMensal;
   const cbCred=ni('refCredMerc')+ni('refCredServ')+ni('refCredEnerg')+ni('refCredAlug')+ni('refCredAtivo')+ni('refCredOutras')+ni('refCredSn')+ni('refCredManual');
-  const premissesHtml='<div class="sec"><div class="sec-t">Premissas da Simula\u00E7\u00E3o</div>'
+  const premissesHtml='<div class="sec"><div class="sec-t">Premissas da Simulação</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 16px;font-size:8px;margin-bottom:4px">'
     +'<div><span style="color:#6B7A8F">RBT12:</span> <strong>'+fmtMoeda(rbt12)+'</strong></div>'
     +'<div><span style="color:#6B7A8F">Tipo de Atividade (LP):</span> <strong>'+tipoAtiv+'</strong></div>'
@@ -3432,23 +3463,23 @@ function buildPDFHtml() {
     +'<div><span style="color:#6B7A8F">Regime Atual:</span> <strong>'+reg+'</strong></div>'
     +'<div><span style="color:#6B7A8F">Compras Anuais:</span> <strong>'+(inp('comprasInput')||'R$ 0,00')+'</strong></div>'
     +'<div><span style="color:#6B7A8F">Folha Mensal:</span> <strong>'+fmtMoeda(folhaMensalVal)+'</strong></div>'
-    +'<div><span style="color:#6B7A8F">Al\u00EDquota ICMS:</span> <strong>'+(inp('aliquotaICMS')||'0')+'%</strong></div>'
-    +'<div><span style="color:#6B7A8F">Al\u00EDquota ISS:</span> <strong>'+(inp('aliquotaISS')||'0')+'%</strong></div>'
-    +'<div><span style="color:#6B7A8F">Al\u00EDquota IPI:</span> <strong>'+(inp('aliquotaIPI')||'0')+'%</strong></div>'
+    +'<div><span style="color:#6B7A8F">Alíquota ICMS:</span> <strong>'+(inp('aliquotaICMS')||'0')+'%</strong></div>'
+    +'<div><span style="color:#6B7A8F">Alíquota ISS:</span> <strong>'+(inp('aliquotaISS')||'0')+'%</strong></div>'
+    +'<div><span style="color:#6B7A8F">Alíquota IPI:</span> <strong>'+(inp('aliquotaIPI')||'0')+'%</strong></div>'
     +'<div><span style="color:#6B7A8F">Base de compras CBS:</span> <strong>'+fmtMoeda(cbCred)+'</strong></div>'
-    +'<div><span style="color:#6B7A8F">Ano Simula\u00E7\u00E3o:</span> <strong>'+(inp('anoSIM')||'2026')+'</strong></div>'
-    +'<div><span style="color:#6B7A8F">Segrega\u00E7\u00E3o:</span> <strong>'+(inp('segregacao')||'100')+'% servi\u00E7os</strong></div>'
+    +'<div><span style="color:#6B7A8F">Ano Simulação:</span> <strong>'+(inp('anoSIM')||'2026')+'</strong></div>'
+    +'<div><span style="color:#6B7A8F">Segregação:</span> <strong>'+(inp('segregacao')||'100')+'% serviços</strong></div>'
     +'</div></div>';
 
   // LEGAL BASIS (dinâmica conforme cenário)
-  const snElegivel = !snNaoElegivel && t('snAliquota') !== 'N\u00C3O ELEG\u00CDVEL';
+  const snElegivel = !snNaoElegivel && t('snAliquota') !== 'NÃO ELEGÍVEL';
   const snLegalStr = snElegivel
     ? '<div><strong>Enquadramento SN:</strong> LC 123/2006 (arts. 17-18)</div>'
       +'<div><strong>Anexo SN:</strong> LC 123/2006, Anexo '+anexo.replace('Anexo ','')+'</div>'
-      +'<div><strong>Al\u00EDquota efetiva SN:</strong> LC 123/2006, art. 18, \u00A71\u00BA-A</div>'
-    : '<div><strong>Enquadramento SN:</strong> N\u00E3o aplic\u00E1vel (SN n\u00E3o eleg\u00EDvel)</div>'
-      +'<div><strong>Anexo SN:</strong> N\u00E3o aplic\u00E1vel</div>'
-      +'<div><strong>Al\u00EDquota efetiva SN:</strong> N\u00E3o aplic\u00E1vel</div>';
+      +'<div><strong>Alíquota efetiva SN:</strong> LC 123/2006, art. 18, §1º-A</div>'
+    : '<div><strong>Enquadramento SN:</strong> Não aplicável (SN não elegível)</div>'
+      +'<div><strong>Anexo SN:</strong> Não aplicável</div>'
+      +'<div><strong>Alíquota efetiva SN:</strong> Não aplicável</div>';
   const issLegalStr = tipoAtiv === 'servicos' ? '<div><strong>ISS:</strong> LC 116/2003</div>' : '';
   const legalBasisHtml='<div class="sec"><div class="sec-t">Base Legal Utilizada</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:7.5px;color:#555">'
@@ -3456,68 +3487,68 @@ function buildPDFHtml() {
     +'<div><strong>IRPJ/CSLL (LP):</strong> Lei 9.249/95, arts. 15 e 28</div>'
     +'<div><strong>PIS/COFINS:</strong> Lei 10.637/02 e 10.833/03</div>'
     +issLegalStr
-    +'<div><strong>ICMS:</strong> Conv\u00EAnios e legisla\u00E7\u00E3o estadual</div>'
+    +'<div><strong>ICMS:</strong> Convênios e legislação estadual</div>'
     +'<div><strong>CBS:</strong> EC 132/2023, LC 214/2025, LC 227/2026</div>'
-    +'<div><strong>Regra de transi\u00E7\u00E3o:</strong> LC 214/2025, arts. 127-130</div>'
+    +'<div><strong>Regra de transição:</strong> LC 214/2025, arts. 127-130</div>'
     +'</div></div>';
 
-  // DECISION HTML — uses "Resultado preliminar da simula\u00E7\u00E3o" instead of "Decis\u00E3o"
+  // DECISION HTML — uses "Resultado preliminar da simulação" instead of "Decisão"
   let reasonText='';
   if (sn>0&&lp>0&&winner!=='Empate') {
     const winReal=sn<lp?'Simples Nacional':'Lucro Presumido';
     const aliqWin=sn<lp?aliqSN:aliqLP;
     const aliqOther=sn<lp?aliqLP:aliqSN;
-    reasonText='O <strong>'+winReal+'</strong> apresentou al\u00EDquota efetiva estimada de <strong>'+aliqWin+'</strong>, '
+    reasonText='O <strong>'+winReal+'</strong> apresentou alíquota efetiva estimada de <strong>'+aliqWin+'</strong>, '
       +'frente a <strong>'+aliqOther+'</strong> no '+((sn<lp)?'Lucro Presumido':'Simples Nacional')+'. '
-      +'A economia anual estimada \u00E9 de <strong>'+fmtMoeda(eco)+'</strong> ('+fmtMoeda(ecoM)+'/m\u00EAs), '
-      +'representando uma diferen\u00E7a de <strong>'+ecoPct+'</strong>. '
-      +'A diferen\u00E7a decorre principalmente da carga consolidada de tributos federais, '
-      +'do ICMS l\u00EDquido e dos encargos considerados no Lucro Presumido.';
+      +'A economia anual estimada é de <strong>'+fmtMoeda(eco)+'</strong> ('+fmtMoeda(ecoM)+'/mês), '
+      +'representando uma diferença de <strong>'+ecoPct+'</strong>. '
+      +'A diferença decorre principalmente da carga consolidada de tributos federais, '
+      +'do ICMS líquido e dos encargos considerados no Lucro Presumido.';
   } else if (winner==='Empate') {
-    reasonText='Os dois regimes apresentaram cargas equivalentes. Recomenda-se avaliar obriga\u00E7\u00F5es acess\u00F3rias, cr\u00E9ditos tribut\u00E1rios e proje\u00E7\u00E3o de crescimento.';
+    reasonText='Os dois regimes apresentaram cargas equivalentes. Recomenda-se avaliar obrigações acessórias, créditos tributários e projeção de crescimento.';
   }
-  const decisionHtml='<div class="rec"><div class="rt">Resultado preliminar da simula\u00E7\u00E3o</div>'
+  const decisionHtml='<div class="rec"><div class="rt">Resultado preliminar da simulação</div>'
     +'<div class="rg"><div class="dr"><span class="lb">Regime com menor carga estimada:</span><span class="vl">'+winner+'</span></div>'
     +'<div class="dr"><span class="lb">Economia anual:</span><span class="vl">'+fmtMoeda(eco)+'</span></div>'
     +'<div class="dr"><span class="lb">Economia mensal:</span><span class="vl">'+fmtMoeda(ecoM)+'</span></div>'
-    +'<div class="dr"><span class="lb">Diferen\u00E7a percentual:</span><span class="vl">'+ecoPct+'</span></div></div>'
+    +'<div class="dr"><span class="lb">Diferença percentual:</span><span class="vl">'+ecoPct+'</span></div></div>'
     +(reasonText?'<div class="dp">'+reasonText+'</div>':'')
     +'<div class="dp" style="font-size:7.5px;color:#888;border:none;margin-top:2px;padding-top:2px">'
-    +'Este resultado depende da confirma\u00E7\u00E3o das premissas, da correta segrega\u00E7\u00E3o das receitas e da valida\u00E7\u00E3o t\u00E9cnica pelo contador respons\u00E1vel.</div></div>';
+    +'Este resultado depende da confirmação das premissas, da correta segregação das receitas e da validação técnica pelo contador responsável.</div></div>';
 
   // REFORMA SECTION — fixed title and disclaimer
   const showReforma = refPisCofins!=='R$ 0,00' && refPisCofins!=='R$ 0';
   const reformaHtml = showReforma
-    ? '<div class="sec"><div class="sec-t">Impacto estimado da CBS \u2014 cen\u00E1rio 2027</div>'
+    ? '<div class="sec"><div class="sec-t">Impacto estimado da CBS — cenário 2027</div>'
       // KPI cards
       +'<div style="display:flex;gap:6px;margin-bottom:6px">'
       +'<div style="flex:1;border:1px solid #E0E4EA;border-radius:5px;padding:5px 7px;text-align:center"><div style="font-size:6.5px;font-weight:600;color:#6B7A8F;text-transform:uppercase">PIS+COFINS Atual</div><div style="font-size:11px;font-weight:700;color:#3A4A6F">'+refPisCofins+'</div></div>'
-      +'<div style="flex:1;border:1px solid #E0E4EA;border-radius:5px;padding:5px 7px;text-align:center"><div style="font-size:6.5px;font-weight:600;color:#6B7A8F;text-transform:uppercase">CBS L\u00EDquida</div><div style="font-size:11px;font-weight:700;color:#2A7DE1">'+refCbsLiquida+'</div></div>'
+      +'<div style="flex:1;border:1px solid #E0E4EA;border-radius:5px;padding:5px 7px;text-align:center"><div style="font-size:6.5px;font-weight:600;color:#6B7A8F;text-transform:uppercase">CBS Líquida</div><div style="font-size:11px;font-weight:700;color:#2A7DE1">'+refCbsLiquida+'</div></div>'
       +'<div style="flex:1;border:1px solid #E0E4EA;border-radius:5px;padding:5px 7px;text-align:center"><div style="font-size:6.5px;font-weight:600;color:#6B7A8F;text-transform:uppercase">Impacto Anual</div><div style="font-size:11px;font-weight:700">'+refImpacto+'</div></div>'
-      +'<div style="flex:1;border:1px solid #E0E4EA;border-radius:5px;padding:5px 7px;text-align:center"><div style="font-size:6.5px;font-weight:600;color:#6B7A8F;text-transform:uppercase">Classifica\u00E7\u00E3o</div><div style="font-size:9px;font-weight:700">'+refClass+'</div></div>'
+      +'<div style="flex:1;border:1px solid #E0E4EA;border-radius:5px;padding:5px 7px;text-align:center"><div style="font-size:6.5px;font-weight:600;color:#6B7A8F;text-transform:uppercase">Classificação</div><div style="font-size:9px;font-weight:700">'+refClass+'</div></div>'
       +'</div>'
       // CBS alert card
       +'<div style="border:1.5px solid #E65100;border-radius:5px;padding:6px 8px;margin-bottom:7px;background:#FFF3E0;break-inside:avoid">'
-      +'<div style="font-size:9px;font-weight:700;color:#BF360C;margin-bottom:2px">\u26A0 Aten\u00E7\u00E3o — Transi\u00E7\u00E3o CBS 2027</div>'
-      +'<div style="font-size:8px;color:#5A3000">A transi\u00E7\u00E3o para a CBS a partir de 2027 acarretar\u00E1 '
-      +(refImpacto.startsWith('-')?'uma <strong>redu\u00E7\u00E3o estimada de '+refImpacto.replace('-','')+'</strong> no custo tribut\u00E1rio federal deste regime, '
-      :refImpacto==='R$ 0,00'?'<strong>impacto neutro</strong> no custo tribut\u00E1rio federal deste regime, '
-      :'um <strong>aumento estimado de '+refImpacto+'</strong> no custo tribut\u00E1rio federal deste regime, ')
-      +'considerando a substitui\u00E7\u00E3o de PIS e COFINS pela nova CBS e os cr\u00E9ditos apurados.</div></div>'
+      +'<div style="font-size:9px;font-weight:700;color:#BF360C;margin-bottom:2px">⚠ Atenção — Transição CBS 2027</div>'
+      +'<div style="font-size:8px;color:#5A3000">A transição para a CBS a partir de 2027 acarretará '
+      +(refImpacto.startsWith('-')?'uma <strong>redução estimada de '+refImpacto.replace('-','')+'</strong> no custo tributário federal deste regime, '
+      :refImpacto==='R$ 0,00'?'<strong>impacto neutro</strong> no custo tributário federal deste regime, '
+      :'um <strong>aumento estimado de '+refImpacto+'</strong> no custo tributário federal deste regime, ')
+      +'considerando a substituição de PIS e COFINS pela nova CBS e os créditos apurados.</div></div>'
       // Credit detail
-      +'<div class="box"><div class="bt">Detalhamento dos Cr\u00E9ditos CBS</div>'
+      +'<div class="box"><div class="bt">Detalhamento dos Créditos CBS</div>'
       +'<div class="lr"><span class="lb">Receita tributada</span><span class="vl">'+cbsReceitaTribTxt+'</span></div>'
-      +'<div class="lr"><span class="lb">Al\u00EDquota CBS (vendas)</span><span class="vl">'+cbsAliqSaidaTxt+'</span></div>'
+      +'<div class="lr"><span class="lb">Alíquota CBS (vendas)</span><span class="vl">'+cbsAliqSaidaTxt+'</span></div>'
       +'<div class="lr"><span class="lb">CBS bruta</span><span class="vl">'+fmtMoeda(n('cbsBruta'))+'</span></div>'
-      +'<div class="lr" style="margin-top:2px;padding-top:2px;border-top:1px solid #eee"><span class="lb">Compras potencialmente credit\u00E1veis</span><span class="vl">'+cbsComprasTxt+'</span></div>'
-      +'<div class="lr"><span class="lb">Percentual credit\u00E1vel</span><span class="vl">'+cbsPctCredTxt+'</span></div>'
-      +'<div class="lr"><span class="lb">Base credit\u00E1vel</span><span class="vl">'+cbsBaseCredTxt+'</span></div>'
-      +'<div class="lr"><span class="lb">Al\u00EDquota CBS (cr\u00E9ditos)</span><span class="vl">'+cbsAliqCredTxt+'</span></div>'
-      +'<div class="lr"><span class="lb">Cr\u00E9dito estimado de CBS</span><span class="vl">'+cbsCredEstTxt+'</span></div>'
-      +'<div class="lr" style="font-weight:700;border-top:1px solid #ddd;padding-top:2px;margin-top:2px"><span class="lb">CBS l\u00EDquida</span><span class="vl">'+refCbsLiquida+'</span></div>'
+      +'<div class="lr" style="margin-top:2px;padding-top:2px;border-top:1px solid #eee"><span class="lb">Compras potencialmente creditáveis</span><span class="vl">'+cbsComprasTxt+'</span></div>'
+      +'<div class="lr"><span class="lb">Percentual creditável</span><span class="vl">'+cbsPctCredTxt+'</span></div>'
+      +'<div class="lr"><span class="lb">Base creditável</span><span class="vl">'+cbsBaseCredTxt+'</span></div>'
+      +'<div class="lr"><span class="lb">Alíquota CBS (créditos)</span><span class="vl">'+cbsAliqCredTxt+'</span></div>'
+      +'<div class="lr"><span class="lb">Crédito estimado de CBS</span><span class="vl">'+cbsCredEstTxt+'</span></div>'
+      +'<div class="lr" style="font-weight:700;border-top:1px solid #ddd;padding-top:2px;margin-top:2px"><span class="lb">CBS líquida</span><span class="vl">'+refCbsLiquida+'</span></div>'
       +'<div class="dp">PIS+COFINS atual: '+refPisCofins+' | Impacto anual: '+cbsImpactoAnualTxt+'</div></div>'
       // Disclaimer
-      +'<div style="font-size:7px;color:#E65100;margin-top:1px;padding:2px 5px;background:#FFF3E0;border-radius:3px"><strong>Nota:</strong> Cen\u00E1rio parcial. Esta an\u00E1lise considera apenas a substitui\u00E7\u00E3o de PIS e COFINS pela CBS e n\u00E3o representa, isoladamente, toda a carga da Reforma Tribut\u00E1ria. O IBS n\u00E3o est\u00E1 inclu\u00EDdo neste c\u00E1lculo.</div></div>'
+      +'<div style="font-size:7px;color:#E65100;margin-top:1px;padding:2px 5px;background:#FFF3E0;border-radius:3px"><strong>Nota:</strong> Cenário parcial. Esta análise considera apenas a substituição de PIS e COFINS pela CBS e não representa, isoladamente, toda a carga da Reforma Tributária. O IBS não está incluído neste cálculo.</div></div>'
     : '';
 
   // ALERTS (apenas dados reais)
@@ -3525,38 +3556,38 @@ function buildPDFHtml() {
   const alerts=[];
   const fatorRV=document.getElementById('fatorR')?.value||'';
   const sujeitoFR=fatorRV!=='';
-  if (sujeitoFR&&rbt12>0&&parseFloat(fatorRV.replace(',','.'))/100>0.25&&parseFloat(fatorRV.replace(',','.'))/100<0.31) alerts.push('Fator R ('+fatorRV+') pr\u00F3ximo de 28%');
-  if (issPct===0&&tipoAtiv==='servicos') alerts.push('ISS n\u00E3o informado para atividade de servi\u00E7os');
+  if (sujeitoFR&&rbt12>0&&parseFloat(fatorRV.replace(',','.'))/100>0.25&&parseFloat(fatorRV.replace(',','.'))/100<0.31) alerts.push('Fator R ('+fatorRV+') próximo de 28%');
+  if (issPct===0&&tipoAtiv==='servicos') alerts.push('ISS não informado para atividade de serviços');
   if (icmsVal===0&&(tipoAtiv==='comercio'||tipoAtiv==='industria')) alerts.push('ICMS zerado para atividade de '+tipoAtiv);
   if (rbt12>4800000) alerts.push('Limite SN excedido');
-  if (n('comprasInput')>rbt12&&rbt12>0) alerts.push('Compras superiores \u00E0 receita');
+  if (n('comprasInput')>rbt12&&rbt12>0) alerts.push('Compras superiores à receita');
   const alertsHtml='<div class="att"><div class="at">Pontos que podem alterar o resultado</div><ul>'
-    +(alerts.length>0?alerts.map(a=>'<li>'+a+'</li>').join(''):'<li>Nenhum alerta cr\u00EDtico identificado.</li>')
+    +(alerts.length>0?alerts.map(a=>'<li>'+a+'</li>').join(''):'<li>Nenhum alerta crítico identificado.</li>')
     +'</ul></div>';
 
   // Read analysis type
   const tipoComp = inp('tipoComparacao') || 'SIMPLES_VS_PRESUMIDO';
   const subtituloMap = {
-    'SIMPLES_VS_PRESUMIDO': 'Simples Nacional \u00D7 Lucro Presumido',
-    'SIMPLES_TRADICIONAL_VS_HIBRIDO': 'Simples tradicional \u00D7 Simples h\u00EDbrido',
-    'PRESUMIDO_ATUAL_VS_REFORMA': 'Lucro Presumido atual \u00D7 Reforma Tribut\u00E1ria'
+    'SIMPLES_VS_PRESUMIDO': 'Simples Nacional × Lucro Presumido',
+    'SIMPLES_TRADICIONAL_VS_HIBRIDO': 'Simples tradicional × Simples híbrido',
+    'PRESUMIDO_ATUAL_VS_REFORMA': 'Lucro Presumido atual × Reforma Tributária'
   };
-  const pdfSubtitulo = subtituloMap[tipoComp] || 'Simples Nacional \u00D7 Lucro Presumido';
+  const pdfSubtitulo = subtituloMap[tipoComp] || 'Simples Nacional × Lucro Presumido';
 
   // ASSEMBLY
   const html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Compare Tributo</title><style>'+css+'</style></head><body>'
     // HEADER
-    +'<div class="rep-hdr"><div class="l"><div class="t">Compare Tributo</div><div class="s">'+pdfSubtitulo+'</div><div class="dt">'+dataStr+' | Vers\u00E3o motor: '+engineVersion+' | Regras: '+rulesVersion+'</div></div>'
+    +'<div class="rep-hdr"><div class="l"><div class="t">Compare Tributo</div><div class="s">'+pdfSubtitulo+'</div><div class="dt">'+dataStr+' | Versão motor: '+engineVersion+' | Regras: '+rulesVersion+'</div></div>'
     +'<div class="r" style="width:130px"></div></div>'
     // IDENTIFICATION + TRACEABILITY
     +'<table class="tbl-id"><tr><td class="lb">Empresa:</td><td class="vl">'+rd+'</td><td class="lb">Atividade:</td><td class="vl">'+atv+'</td></tr>'
     +'<tr><td class="lb">CNPJ:</td><td class="vl">'+cd+'</td><td class="lb">RBT12:</td><td class="vl">'+fmtMoeda(rbt12)+'</td></tr>'
-    +'<tr><td class="lb">CNAE:</td><td class="vl">'+ce+'</td><td class="lb">Simula\u00E7\u00E3o:</td><td class="vl">'+simId+'</td></tr></table>'
+    +'<tr><td class="lb">CNAE:</td><td class="vl">'+ce+'</td><td class="lb">Simulação:</td><td class="vl">'+simId+'</td></tr></table>'
     // TRACEABILITY BAR
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;font-size:7px;color:#999">'
-    +'<span><strong>Vers\u00E3o do motor:</strong> '+engineVersion+'</span>'
-    +'<span><strong>Vers\u00E3o das regras:</strong> '+rulesVersion+'</span>'
-    +'<span><strong>Simula\u00E7\u00E3o:</strong> '+simId+'</span>'
+    +'<span><strong>Versão do motor:</strong> '+engineVersion+'</span>'
+    +'<span><strong>Versão das regras:</strong> '+rulesVersion+'</span>'
+    +'<span><strong>Simulação:</strong> '+simId+'</span>'
     +'<span><strong>Status:</strong> Resultado preliminar</span>'
     +'</div>'
     // PREMISSES
@@ -3573,16 +3604,16 @@ function buildPDFHtml() {
     // SN CARD
     +'<div class="cmp-c sn"><div class="chd">'+snLabelPdf+'</div><div class="cb">'
     +(snNaoElegivel
-      ?'<table><tr><td class="lb">Status</td><td class="vl">\u274C N\u00E3o Eleg\u00EDvel</td></tr>'
+      ?'<table><tr><td class="lb">Status</td><td class="vl">❌ Não Elegível</td></tr>'
       +'<tr><td class="lb">Motivo</td><td class="vl">Receita superior ao limite legal do Simples Nacional (R$ 4.800.000,00)</td></tr></table>'
-      :'<table><tr><td class="lb">Al\u00EDquota efetiva</td><td class="vl">'+aliqSN+'</td></tr>'
+      :'<table><tr><td class="lb">Alíquota efetiva</td><td class="vl">'+aliqSN+'</td></tr>'
       +'<tr><td class="lb">Anexo</td><td class="vl">'+anexo+'</td></tr>'
       +'<tr><td class="lb">Fator R</td><td class="vl">'+(sujeitoFR?fatorR:fatorRctx)+'</td></tr>'
       +'<tr><td class="lb">DAS anual</td><td class="vl">'+dasDet+'</td></tr>'
       +(temSublimitePdf?'<tr><td class="lb">'+snSublimitePdfLabel+'</td><td class="vl">'+snSublimitePdfValor+'</td></tr>':'')
       +'<tr><td class="lb">Encargos s/ folha</td><td class="vl">'+(snEnc||'R$ 0,00')+'</td></tr>')
     +'</table></div>'
-    +'<div class="ft"><div class="r2"><span class="lb">Total Anual</span><span class="vl">'+(snNaoElegivel?'N/A':fmtMoeda(sn))+'</span></div><div class="r2"><span class="lb">M\u00E9dia Mensal</span><span class="vl">'+(snNaoElegivel?'N/A':fmtMoeda(sm))+'</span></div></div></div>'
+    +'<div class="ft"><div class="r2"><span class="lb">Total Anual</span><span class="vl">'+(snNaoElegivel?'N/A':fmtMoeda(sn))+'</span></div><div class="r2"><span class="lb">Média Mensal</span><span class="vl">'+(snNaoElegivel?'N/A':fmtMoeda(sm))+'</span></div></div></div>'
     // LP CARD
     +'<div class="cmp-c lp"><div class="chd">Lucro Presumido</div><div class="cb">'
     +'<table>'
@@ -3595,27 +3626,27 @@ function buildPDFHtml() {
     +'<tr><td class="lb">ICMS</td><td class="vl">'+icmsT+'</td><td class="pct">'+icmsPctTxt+'</td></tr>'
     +'<tr><td class="lb">Encargos s/ folha</td><td class="vl">'+encLP+'</td><td class="pct">'+encPct+'</td></tr>'
     +'</table></div>'
-    +'<div class="ft"><div class="r2"><span class="lb">Total Anual</span><span class="vl">'+fmtMoeda(lp)+'</span></div><div class="r2"><span class="lb">M\u00E9dia Mensal</span><span class="vl">'+fmtMoeda(lm)+'</span></div>'
-    +(folhaMensalVal===0?'<div style="font-size:7px;color:#888;margin-top:3px;font-style:italic">Nota: Simula\u00E7\u00E3o considerando aus\u00EAncia de folha/pr\u00F3-labore. Encargos previdenci\u00E1rios patronais (INSS/RAT/Terceiros) n\u00E3o incidentes.</div>':'')
+    +'<div class="ft"><div class="r2"><span class="lb">Total Anual</span><span class="vl">'+fmtMoeda(lp)+'</span></div><div class="r2"><span class="lb">Média Mensal</span><span class="vl">'+fmtMoeda(lm)+'</span></div>'
+    +(folhaMensalVal===0?'<div style="font-size:7px;color:#888;margin-top:3px;font-style:italic">Nota: Simulação considerando ausência de folha/pró-labore. Encargos previdenciários patronais (INSS/RAT/Terceiros) não incidentes.</div>':'')
     +'</div></div>'
     +'</div></div>'
     // HYBRID SECTION (only when hybrid data exists)
     +(tipoComp === 'SIMPLES_TRADICIONAL_VS_HIBRIDO' && n('hibTotal') > 0
-      ? '<div class="sec"><div class="sec-t">Comparativo Simples H\u00EDbrido</div><div class="cmp">'
+      ? '<div class="sec"><div class="sec-t">Comparativo Simples Híbrido</div><div class="cmp">'
       +'<div class="cmp-c sn"><div class="chd">Simples Tradicional</div><div class="cb">'
       +'<table><tr><td class="lb">Total anual</td><td class="vl">'+fmtMoeda(sn)+'</td></tr>'
-      +'<tr><td class="lb">Al\u00EDquota efetiva</td><td class="vl">'+aliqSN+'</td></tr>'
+      +'<tr><td class="lb">Alíquota efetiva</td><td class="vl">'+aliqSN+'</td></tr>'
       +'<tr><td class="lb">DAS</td><td class="vl">'+dasDet+'</td></tr></table></div></div>'
-      +'<div class="cmp-c hib"><div class="chd">Simples H\u00EDbrido</div><div class="cb">'
+      +'<div class="cmp-c hib"><div class="chd">Simples Híbrido</div><div class="cb">'
       +'<table><tr><td class="lb">Total anual</td><td class="vl">'+fmtMoeda(n('hibTotal'))+'</td></tr>'
-      +'<tr><td class="lb">Al\u00EDquota efetiva</td><td class="vl">'+t('hibAliquota')+'</td></tr>'
+      +'<tr><td class="lb">Alíquota efetiva</td><td class="vl">'+t('hibAliquota')+'</td></tr>'
       +'<tr><td class="lb">DAS reduzido</td><td class="vl">'+t('hibDasReduzido')+'</td></tr>'
       +'<tr><td class="lb">CBS fora do DAS</td><td class="vl">'+t('hibCbsFora')+'</td></tr>'
       +(n('hibIbsFora') > 0 ? '<tr><td class="lb">IBS fora do DAS</td><td class="vl">'+t('hibIbsFora')+'</td></tr>' : '')+'</table></div></div>'
       +'</div>'
       +'<div class="kpi-row">'
       +'<div class="kpi-c eco"><div class="kl">Economia anual</div><div class="kv">'+t('hibEconomia')+'</div><div class="ks">'+t('hibEcoPct')+'</div></div>'
-      +'<div class="kpi-c eco"><div class="kl">Regime com menor carga</div><div class="kv" style="font-size:11px">'+(sn<n('hibTotal')?'Tradicional':'H\u00EDbrido')+'</div><div class="ks">Diferen\u00E7a relativa</div></div></div></div>'
+      +'<div class="kpi-c eco"><div class="kl">Regime com menor carga</div><div class="kv" style="font-size:11px">'+(sn<n('hibTotal')?'Tradicional':'Híbrido')+'</div><div class="ks">Diferença relativa</div></div></div></div>'
       : '')
     // ICMS DETAIL
     +icmsDetailHtml
@@ -3626,7 +3657,7 @@ function buildPDFHtml() {
     // INDICATORS
     +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px;font-size:7.5px;color:#6B7A8F">'
     +'<span>Vantagem: <strong style="color:#1A1A2E">'+vant+'</strong></span>'
-    +'<span>Diferen\u00E7a/m\u00EAs: <strong style="color:#1A1A2E">'+diffMes+'</strong></span>'
+    +'<span>Diferença/mês: <strong style="color:#1A1A2E">'+diffMes+'</strong></span>'
     +'<span>Carga s/ RBT12: <strong style="color:#1A1A2E">'+carga+'</strong></span>'
     +'</div>'
     // REFORMA SECTION
@@ -3636,7 +3667,7 @@ function buildPDFHtml() {
     // ALERTS
     +alertsHtml
     // FOOTER
-    +'<div class="ftr">Compare Tributo \u2014 Documento gerado automaticamente em '+dataStr+'. A decis\u00E3o definitiva depende de an\u00E1lise t\u00E9cnica pelo contador respons\u00E1vel.'+pag+'</div>'
+    +'<div class="ftr">Compare Tributo — Documento gerado automaticamente em '+dataStr+'. A decisão definitiva depende de análise técnica pelo contador responsável.'+pag+'</div>'
     +'</body></html>';
 
   return html;
@@ -3803,7 +3834,9 @@ function collectResults() {
 
 // IBS 2027 — alíquota transitória de 0,10% (LC 214/2025)
 function getIbsAliq2027() {
-  return 0.001; // 0.10%
+  // Alíquota transitória do IBS em 2027: 0,10% (LC 227/2026)
+  // 2028: 0,05%; 2029+: alíquotas progressivas conforme LC 214/2025
+  return 0.001;
 }
 
 function getSNParams(anexo,rbt) {
@@ -3980,20 +4013,20 @@ function calcularImpacto(base, comparado) {
 function getReparticao2027(anexo, faixa) {
   // faixa: 0-based index (0=1ª, 1=2ª, ..., 5=6ª)
   // Retorna { irpj, csll, cbs, cpp, iss, ibs } em fração (0-1)
-  // IBS = 0 em 2027 (sem cálculo), taxa redistribuída para ISS
-  var linhaRep = [0.04, 0.035, 0.1641, 0.434, 0.3269, 0];
-  var anexoI = [
-    linhaRep, linhaRep, linhaRep, linhaRep, linhaRep, linhaRep
-  ];
+  // CBS substitui COFINS+PIS; IBS substitui parte do ISS (LC 214/2025, LC 227/2026)
+  // Anexos I-V usam mesma estrutura de partilha (simplificação válida para simulação)
+  var linhaBase = [0.04, 0.035, 0.1641, 0.434, 0.3269, 0];
+  // IBS = 0,19% na 4ª faixa do Anexo III (LC 214/2025 art. 127 c/c regulamentação)
+  var linhaIII_4 = [0.04, 0.035, 0.1641, 0.434, 0.325, 0.0019];
   var anexoIII = [
-    linhaRep, linhaRep, linhaRep, linhaRep, linhaRep, linhaRep
+    linhaBase, linhaBase, linhaBase, linhaIII_4, linhaBase, linhaBase
   ];
   var T = {
-    'Anexo I':   anexoI,
-    'Anexo II':  anexoI,
+    'Anexo I':   [linhaBase,linhaBase,linhaBase,linhaBase,linhaBase,linhaBase],
+    'Anexo II':  [linhaBase,linhaBase,linhaBase,linhaBase,linhaBase,linhaBase],
     'Anexo III': anexoIII,
-    'Anexo IV':  anexoIII,
-    'Anexo V':   anexoIII
+    'Anexo IV':  [linhaBase,linhaBase,linhaBase,linhaBase,linhaBase,linhaBase],
+    'Anexo V':   [linhaBase,linhaBase,linhaBase,linhaBase,linhaBase,linhaBase]
   };
   var arr = T[anexo];
   if (!arr) arr = T['Anexo III'];
@@ -4081,8 +4114,8 @@ function calcularSublimite(params) {
       issForaDoDas: afeta.iss,
       icmsForaDoDas: afeta.icms,
       dataInicioEfeito: 'Já vigente',
-      justificativaLegal: (afeta.iss ? 'ISS' : 'ICMS') + ' recolhido por fora do DAS (impedimento do sublimite confirmado pelo usu\u00E1rio).',
-      premissasUtilizadas: ['Impedimento confirmado manualmente pelo usu\u00E1rio']
+      justificativaLegal: (afeta.iss ? 'ISS' : 'ICMS') + ' recolhido por fora do DAS (impedimento do sublimite confirmado pelo usuário).',
+      premissasUtilizadas: ['Impedimento confirmado manualmente pelo usuário']
     };
   }
 
@@ -4098,7 +4131,7 @@ function calcularSublimite(params) {
       issForaDoDas: afeta.iss,
       icmsForaDoDas: afeta.icms,
       dataInicioEfeito: 'Desde 01/' + (temAno ? anoSIM : 'ano atual'),
-      justificativaLegal: 'Receita do ano anterior (' + fmtDecimal(recAnt) + ') superior ao sublimite de R$ 3.600.000,00. Impedimento vigora desde o in\u00EDcio do ano-calend\u00E1rio (art. 20, \u00A73\u00BA, LC 123/2006).',
+      justificativaLegal: 'Receita do ano anterior (' + fmtDecimal(recAnt) + ') superior ao sublimite de R$ 3.600.000,00. Impedimento vigora desde o início do ano-calendário (art. 20, §3º, LC 123/2006).',
       premissasUtilizadas: ['Receita ano anterior = ' + fmtDecimal(recAnt), 'Sublimite = R$ 3.600.000,00']
     };
   }
@@ -4110,8 +4143,8 @@ function calcularSublimite(params) {
         status: 'IMPEDIMENTO_MES_SEGUINTE',
         issForaDoDas: false,
         icmsForaDoDas: false,
-        dataInicioEfeito: temMes ? 'M\u00EAs ' + (parseInt(mesUltrapassagem) + 1) + ' de ' + (temAno ? anoSIM : 'ano atual') : 'M\u00EAs subsequente \u00E0 ultrapassagem',
-        justificativaLegal: 'Receita acumulada (' + fmtDecimal(recAcum) + ') superior a R$ 4.320.000,00 (excesso > 20%). Impedimento produz efeitos a partir do m\u00EAs subsequente ao da ultrapassagem (art. 20, \u00A74\u00BA, LC 123/2006).',
+        dataInicioEfeito: temMes ? 'Mês ' + (parseInt(mesUltrapassagem) + 1) + ' de ' + (temAno ? anoSIM : 'ano atual') : 'Mês subsequente à ultrapassagem',
+        justificativaLegal: 'Receita acumulada (' + fmtDecimal(recAcum) + ') superior a R$ 4.320.000,00 (excesso > 20%). Impedimento produz efeitos a partir do mês subsequente ao da ultrapassagem (art. 20, §4º, LC 123/2006).',
         premissasUtilizadas: ['Receita acumulada = ' + fmtDecimal(recAcum), 'Limite 20% = R$ 4.320.000,00']
       };
     }
@@ -4122,7 +4155,7 @@ function calcularSublimite(params) {
         issForaDoDas: false,
         icmsForaDoDas: false,
         dataInicioEfeito: '01/01/' + (anoAtualInt + 1),
-        justificativaLegal: 'Receita acumulada (' + fmtDecimal(recAcum) + ') entre R$ 3.600.000,01 e R$ 4.320.000,00 (excesso \u2264 20%). Impedimento produz efeitos a partir do ano-calend\u00E1rio seguinte (art. 20, \u00A73\u00BA, LC 123/2006).',
+        justificativaLegal: 'Receita acumulada (' + fmtDecimal(recAcum) + ') entre R$ 3.600.000,01 e R$ 4.320.000,00 (excesso ≤ 20%). Impedimento produz efeitos a partir do ano-calendário seguinte (art. 20, §3º, LC 123/2006).',
         premissasUtilizadas: ['Receita acumulada = ' + fmtDecimal(recAcum), 'Limite 20% = R$ 4.320.000,00']
       };
     }
@@ -4133,16 +4166,16 @@ function calcularSublimite(params) {
     issForaDoDas: false,
     icmsForaDoDas: false,
     dataInicioEfeito: null,
-    justificativaLegal: 'A receita informada (RBT12 = ' + fmtDecimal(rbt12) + ') ultrapassa o sublimite de R$ 3.600.000,00. Para determinar se o ISS/ICMS j\u00E1 deve ser recolhido fora do DAS, \u00E9 necess\u00E1rio informar: receita do ano anterior, receita acumulada no ano atual, m\u00EAs da ultrapassagem e ano da simula\u00E7\u00E3o.',
-    premissasUtilizadas: ['RBT12 = ' + fmtDecimal(rbt12), 'Sublimite = R$ 3.600.000,00', 'Dados hist\u00F3ricos n\u00E3o informados']
+    justificativaLegal: 'A receita informada (RBT12 = ' + fmtDecimal(rbt12) + ') ultrapassa o sublimite de R$ 3.600.000,00. Para determinar se o ISS/ICMS já deve ser recolhido fora do DAS, é necessário informar: receita do ano anterior, receita acumulada no ano atual, mês da ultrapassagem e ano da simulação.',
+    premissasUtilizadas: ['RBT12 = ' + fmtDecimal(rbt12), 'Sublimite = R$ 3.600.000,00', 'Dados históricos não informados']
   };
 }
 
 function calcularComparacaoSimplesPresumido(formData) {
-  var rbt12 = typeof formData.rbt12Input === 'number' ? formData.rbt12Input : (parseFloat(String(formData.rbt12Input).replace(/\./g,'').replace(',','.')) || 0);
-  var comprasAnual = typeof formData.comprasInput === 'number' ? formData.comprasInput : (parseFloat(String(formData.comprasInput).replace(/\./g,'').replace(',','.')) || 0);
-  var sal = parseFloat(formData.salarios) || 0;
-  var prol = parseFloat(formData.prolabore) || 0;
+  var rbt12 = typeof formData.rbt12Input === 'number' ? formData.rbt12Input : parseCurrencyPtBR(formData.rbt12Input);
+  var comprasAnual = typeof formData.comprasInput === 'number' ? formData.comprasInput : parseCurrencyPtBR(formData.comprasInput);
+  var sal = parseCurrencyPtBR(formData.salarios);
+  var prol = parseCurrencyPtBR(formData.prolabore);
   var inssP = (parseFloat(formData.inss) || 20) / 100;
   var ratP = (parseFloat(formData.rat) || 3) / 100;
   var tercP = (parseFloat(formData.terceiros) || 3.3) / 100;
@@ -4249,72 +4282,72 @@ function calcularComparacaoSimplesPresumido(formData) {
   var snComposicao = 'DAS (inclui CPP)';
   if (anexoSN === 'Anexo IV') snComposicao = 'DAS + CPP separada';
   if (issFora) {
-    snLabel = 'SIMPLES NACIONAL \u2014 ISS RECOLHIDO FORA DO DAS';
+    snLabel = 'SIMPLES NACIONAL — ISS RECOLHIDO FORA DO DAS';
     snComposicao = 'DAS sem ISS (recolhido por fora do DAS)';
   } else if (icmsFora) {
-    snLabel = 'SIMPLES NACIONAL \u2014 ICMS RECOLHIDO FORA DO DAS';
+    snLabel = 'SIMPLES NACIONAL — ICMS RECOLHIDO FORA DO DAS';
     snComposicao = 'DAS sem ICMS (recolhido por fora do DAS)';
   }
 
   // fatorR text
-  var fatorRText = sujeitoFR ? fmtDecimal(fatorR * 100) + '%' : 'N\u00E3o aplic\u00E1vel ao enquadramento da atividade informada.';
+  var fatorRText = sujeitoFR ? fmtDecimal(fatorR * 100) + '%' : 'não utilizado para esta atividade, tributada diretamente pelo ' + anexoSN;
   var cnaeDesc = '';
   try { cnaeDesc = CNAE.getDesc ? CNAE.getDesc(classe) : ''; } catch(e) {}
 
   // Rec/Justificativa
-  var recTitle = 'Decis\u00E3o: ' + (winner || 'Empate');
-  var recSub = winner ? 'Regime com menor carga tribut\u00E1ria estimada' : 'Compara\u00E7\u00E3o n\u00E3o dispon\u00EDvel';
+  var recTitle = 'Decisão: ' + (winner || 'Empate');
+  var recSub = winner ? 'Regime com menor carga tributária estimada' : 'Comparação não disponível';
   var recReason = '';
   var recParecer = '';
-  var recIcon = '\u25CF';
+  var recIcon = '●';
 
   // Construir justificativa e parecer
   var fatores = [];
   var justificativa = '';
 
   if (elegibilidade.hasBlock) {
-    justificativa = 'O Lucro Presumido \u00E9 o regime aplic\u00E1vel: a empresa n\u00E3o \u00E9 eleg\u00EDvel ao Simples Nacional. Carga efetiva estimada de ' + fmtDecimal(lp.aliquota) + '%.';
-    recIcon = '\u26A0\uFE0F';
-    recTitle = 'Decis\u00E3o: Lucro Presumido (SN n\u00E3o eleg\u00EDvel)';
-    recSub = 'Regime aplic\u00E1vel';
-    recReason = 'A empresa n\u00E3o \u00E9 eleg\u00EDvel ao Simples Nacional por exceder o teto legal de R$ 4.800.000,00.';
-    fatores.push('Empresa n\u00E3o eleg\u00EDvel ao Simples Nacional');
+    justificativa = 'O Lucro Presumido é o regime aplicável: a empresa não é elegível ao Simples Nacional. Carga efetiva estimada de ' + fmtDecimal(lp.aliquota) + '%.';
+    recIcon = '⚠️';
+    recTitle = 'Decisão: Lucro Presumido (SN não elegível)';
+    recSub = 'Regime aplicável';
+    recReason = 'A empresa não é elegível ao Simples Nacional por exceder o teto legal de R$ 4.800.000,00.';
+    fatores.push('Empresa não elegível ao Simples Nacional');
   } else if (dadosInsuficientes) {
-    justificativa = 'N\u00E3o foi poss\u00EDvel concluir a compara\u00E7\u00E3o porque a data de in\u00EDcio dos efeitos do sublimite n\u00E3o foi determinada.';
-    recIcon = '\u26A0\uFE0F';
-    recTitle = 'Situa\u00E7\u00E3o do Sublimite Pendente';
+    justificativa = 'Não foi possível concluir a comparação porque a data de início dos efeitos do sublimite não foi determinada.';
+    recIcon = '⚠️';
+    recTitle = 'Situação do Sublimite Pendente';
     recSub = 'Dados insuficientes para determinar o regime com menor carga';
     recReason = sublimiteResult.justificativaLegal;
     recParecer = sublimiteResult.justificativaLegal;
   } else {
     recIcon = sn.total < lp.total ? '\u{1F7E2}' : '\u{1F535}';
     if (winner === 'Simples Nacional') {
-      justificativa = 'O Simples Nacional apresentou menor carga estimada porque sua al\u00EDquota efetiva de ' + fmtDecimal(sn.aliquotaDisplay) + '% ficou abaixo da carga consolidada de ' + fmtDecimal(lp.aliquota) + '% apurada no Lucro Presumido.';
-      if (issFora) justificativa += ' No cen\u00E1rio em que o impedimento do sublimite j\u00E1 produz efeitos, o ISS de R$ ' + fmtDecimal(lp.iss) + ' \u00E9 recolhido por fora do DAS.';
-      justificativa += ' Diferen\u00E7a anual: R$ ' + fmtDecimal(economia) + ' (' + fmtDecimal(ecoPct) + '%).';
+      justificativa = 'O Simples Nacional apresentou menor carga estimada porque sua alíquota efetiva de ' + fmtDecimal(sn.aliquotaDisplay) + '% ficou abaixo da carga consolidada de ' + fmtDecimal(lp.aliquota) + '% apurada no Lucro Presumido.';
+      if (issFora) justificativa += ' No cenário em que o impedimento do sublimite já produz efeitos, o ISS de R$ ' + fmtDecimal(lp.iss) + ' é recolhido por fora do DAS.';
+      justificativa += ' Diferença anual: R$ ' + fmtDecimal(economia) + ' (' + fmtDecimal(ecoPct) + '%).';
     } else if (winner === 'Lucro Presumido') {
       justificativa = 'O Lucro Presumido apresentou menor carga estimada porque sua carga consolidada de ' + fmtDecimal(lp.aliquota) + '% ficou abaixo da carga de ' + fmtDecimal(sn.aliquotaDisplay) + '% apurada no Simples Nacional';
       if (issFora) justificativa += ' com ISS recolhido fora do DAS';
-      justificativa += '. Diferen\u00E7a anual: R$ ' + fmtDecimal(economia) + ' (' + fmtDecimal(ecoPct) + '%).';
+      justificativa += '. Diferença anual: R$ ' + fmtDecimal(economia) + ' (' + fmtDecimal(ecoPct) + '%).';
     } else {
-      justificativa = 'Os regimes apresentaram cargas equivalentes. Recomenda-se avaliar obriga\u00E7\u00F5es acess\u00F3rias, cr\u00E9ditos tribut\u00E1rios e proje\u00E7\u00E3o de crescimento.';
+      justificativa = 'Os regimes apresentaram cargas equivalentes. Recomenda-se avaliar obrigações acessórias, créditos tributários e projeção de crescimento.';
     }
 
     // Fatores
     if (issFora) {
       var dasExibir = sn.dasExibir || sn.dasAnual;
-      fatores.push('No cen\u00E1rio em que o impedimento do sublimite j\u00E1 produz efeitos, o Simples Nacional possui DAS federal de R$ ' + fmtDecimal(dasExibir) + ' e ISS de R$ ' + fmtDecimal(lp.iss) + ' recolhido por fora.');
+      fatores.push('No cenário em que o impedimento do sublimite já produz efeitos, o Simples Nacional possui DAS federal de R$ ' + fmtDecimal(dasExibir) + ' e ISS de R$ ' + fmtDecimal(lp.iss) + ' recolhido por fora.');
       fatores.push('A carga total estimada do Simples Nacional corresponde a ' + fmtDecimal(sn.aliquotaDisplay) + '% da receita.');
     }
     if (issFora || icmsFora) {
       fatores.push('O Lucro Presumido apresentou carga consolidada de ' + fmtDecimal(lp.aliquota) + '%.');
-      fatores.push('A diferen\u00E7a anual estimada \u00E9 de R$ ' + fmtDecimal(economia) + '.');
+      fatores.push('A diferença anual estimada é de R$ ' + fmtDecimal(economia) + '.');
     }
     if (lp.adicionalIRPJ > 0) fatores.push('O adicional de IRPJ no Lucro Presumido corresponde a R$ ' + fmtDecimal(lp.adicionalIRPJ) + '.');
-    if (sujeitoFR && fatorR > 0.28) fatores.push('Fator R de ' + fmtDecimal(fatorR * 100) + '% \u2014 enquadramento no Anexo III');
-    if (sujeitoFR && fatorR > 0 && fatorR < 0.28) fatores.push('Fator R de ' + fmtDecimal(fatorR * 100) + '% \u2014 enquadramento no Anexo V');
+    if (sujeitoFR && fatorR > 0.28) fatores.push('Fator R de ' + fmtDecimal(fatorR * 100) + '% — enquadramento no Anexo III');
+    if (sujeitoFR && fatorR > 0 && fatorR < 0.28) fatores.push('Fator R de ' + fmtDecimal(fatorR * 100) + '% — enquadramento no Anexo V');
 
-    recReason = 'A carga tribut\u00E1ria no ' + winner + ' \u00E9 aproximadamente ' + fmtDecimal(ecoPct) + '% menor que a alternativa.';
+    recReason = 'A carga tributária no ' + winner + ' é aproximadamente ' + fmtDecimal(ecoPct) + '% menor que a alternativa.';
     recParecer = justificativa;
   }
 
@@ -4382,7 +4415,7 @@ function calcularComparacaoSimplesPresumido(formData) {
       reason: recReason,
       parecer: recParecer,
       icon: recIcon,
-      fatores: fatores.length > 0 ? fatores.join('<br>\u2022 ') : '\u2014'
+      fatores: fatores.length > 0 ? fatores.join('<br>• ') : '—'
     },
     fatorR: fmtDecimal(fatorR * 100) + '%',
     anexoFR: sujeitoFR ? anexoSN : '',
@@ -4393,8 +4426,8 @@ function calcularComparacaoSimplesPresumido(formData) {
     conclusao: winner ? {
       vencedor: winner,
       texto: winner === 'Simples Nacional'
-        ? 'O Simples Nacional apresentou carga estimada ' + impacto.percentual.toFixed(2).replace('.',',') + '% inferior \u00E0 carga do Lucro Presumido.'
-        : 'O Lucro Presumido apresentou carga estimada ' + impacto.percentual.toFixed(2).replace('.',',') + '% inferior \u00E0 carga do Simples Nacional.'
+        ? 'O Simples Nacional apresentou carga estimada ' + impacto.percentual.toFixed(2).replace('.',',') + '% inferior à carga do Lucro Presumido.'
+        : 'O Lucro Presumido apresentou carga estimada ' + impacto.percentual.toFixed(2).replace('.',',') + '% inferior à carga do Simples Nacional.'
     } : dadosInsuficientes
       ? { vencedor: '—', texto: 'Dados insuficientes para determinar o regime com menor carga.' }
       : { vencedor: 'Empate', texto: 'Os regimes apresentaram cargas equivalentes.' },
@@ -4409,10 +4442,10 @@ function calcularComparacaoSimplesPresumido(formData) {
 
 function calcularComparacaoSimplesHibrido(formData) {
   try {
-  var rbt12 = typeof formData.rbt12Input === 'number' ? formData.rbt12Input : (parseFloat(String(formData.rbt12Input).replace(/\./g,'').replace(',','.')) || 0);
-  var comprasAnual = typeof formData.comprasInput === 'number' ? formData.comprasInput : (parseFloat(String(formData.comprasInput).replace(/\./g,'').replace(',','.')) || 0);
-  var sal = parseFloat(formData.salarios) || 0;
-  var prol = parseFloat(formData.prolabore) || 0;
+  var rbt12 = typeof formData.rbt12Input === 'number' ? formData.rbt12Input : parseCurrencyPtBR(formData.rbt12Input);
+  var comprasAnual = typeof formData.comprasInput === 'number' ? formData.comprasInput : parseCurrencyPtBR(formData.comprasInput);
+  var sal = parseCurrencyPtBR(formData.salarios);
+  var prol = parseCurrencyPtBR(formData.prolabore);
   var inssP = (parseFloat(formData.inss) || 20) / 100;
   var ratP = (parseFloat(formData.rat) || 3) / 100;
   var tercP = (parseFloat(formData.terceiros) || 3.3) / 100;
@@ -4433,8 +4466,6 @@ function calcularComparacaoSimplesHibrido(formData) {
   var reducaoInfo = getCbsAliqEfetiva(cnae, aliqCbsPadrao, confirmadoCondicional);
   var aliqCbs = reducaoInfo.aliqEfetiva;
   var cbsReducao = reducaoInfo.reducao;
-  var aliqIbs2027 = getIbsAliq2027(); // engine preparado para IBS futuramente
-
   var folhaMensal = sal + prol;
   var folha12m = folhaMensal * 12;
   var fatorR = rbt12 > 0 ? folha12m / rbt12 : 0;
@@ -4477,15 +4508,16 @@ function calcularComparacaoSimplesHibrido(formData) {
   // Crédito usa alíquota das compras (aliqCbsCompras), NÃO a alíquota reduzida das vendas (aliqCbs)
   var credCbs = comprasAnual * optOutPct * aliqCbsCompras;
   var cbsLiquida = Math.max(0, cbsDebito - credCbs);
-  // IBS = 0 em 2027 (alíquota transitória de 0,10%, sem cobrança por fora do DAS neste ano)
-  var ibsDebito = 0;
-  var credIbs = 0;
-  var ibsLiquido = 0;
+  // IBS — alíquota transitória de 0,10% em 2027 (LC 227/2026)
+  var aliqIbs = getIbsAliq2027();
+  var ibsDebito = receitaExposta * aliqIbs;
+  var credIbs = comprasAnual * optOutPct * aliqIbs;
+  var ibsLiquido = Math.max(0, ibsDebito - credIbs);
 
-  // Parcelas dentro do DAS a retirar
+  // Parcelas dentro do DAS a retirar (CBS + IBS)
   var parcelaCbsDentro = dasIntegral * optOutPct * rep.cbs;
-  var parcelaIbsDentro = dasIntegral * optOutPct * rep.ibs; // sempre 0 em 2027
-  var dasReduzido = dasIntegral - parcelaCbsDentro;
+  var parcelaIbsDentro = dasIntegral * optOutPct * rep.ibs;
+  var dasReduzido = dasIntegral - parcelaCbsDentro - parcelaIbsDentro;
 
   // tribFora uses net ICMS/ISS (after credits), matching LP calculation
   var tribFora = 0;
@@ -4529,16 +4561,16 @@ function calcularComparacaoSimplesHibrido(formData) {
       anoSimulacao: anoSim,
       erros: erros,
       simplesTradicional: { rbt12: rbt12, total: snTrad.total, media: snTrad.media, aliquota: snTrad.aliquotaDisplay, das: snTrad.dasAnual, encargos: encargosFora, anexo: anexoSN },
-      simplesHibrido: { total: 0, media: 0, aliquota: 0, dasIntegral: dasIntegral, dasReduzido: dasReduzido, cbsLiquida: cbsLiquida, ibsLiquido: 0, encargos: encargosFora, reparticao: rep },
+      simplesHibrido: { total: 0, media: 0, aliquota: 0, dasIntegral: dasIntegral, dasReduzido: dasReduzido, cbsLiquida: cbsLiquida, ibsLiquido: ibsLiquido, encargos: encargosFora, reparticao: rep },
       CBS: { aliq: aliqCbs * 100, aliqPadrao: aliqCbsPadrao * 100, debito: cbsDebito, credito: credCbs, liquida: cbsLiquida, reducao: cbsReducao ? { pct: cbsReducao.pct * 100, descricao: cbsReducao.descricao, baseLegal: cbsReducao.baseLegal, artigo: cbsReducao.artigo, paragrafo: cbsReducao.paragrafo, inciso: cbsReducao.inciso, requisitos: cbsReducao.requisitos, condicional: cbsReducao.condicional } : null },
-      IBS: { aliq: aliqIbs2027 * 100, debito: ibsDebito, credito: credIbs, liquido: ibsLiquido },
+      IBS: { aliq: aliqIbs * 100, debito: ibsDebito, credito: credIbs, liquido: ibsLiquido },
       comparacaoFinanceira: { valorAnual: 0, valorMensal: 0, percentual: 0, tipo: 'NEUTRO' },
       conclusao: { vencedor: 'Erro de consistencia', texto: 'Erro de consistencia nos calculos: ' + erros.join('; ') },
       alertas: erros,
       memoriaCalculo: {
-        das: dasIntegral.toFixed(2) + ' (DAS integral), CBS dentro: ' + (dasIntegral * rep.cbs).toFixed(2) + ' (' + (rep.cbs*100).toFixed(2) + '%)',
+        das: dasIntegral.toFixed(2) + ' (DAS integral), CBS dentro: ' + (dasIntegral * rep.cbs).toFixed(2) + ' (' + (rep.cbs*100).toFixed(2) + '%), IBS dentro: ' + (dasIntegral * rep.ibs).toFixed(2) + ' (' + (rep.ibs*100).toFixed(2) + '%)',
         cbs: (cbsReducao ? 'Redução CBS: ' + (cbsReducao.pct*100).toFixed(0) + '% (' + cbsReducao.descricao + ', ' + cbsReducao.baseLegal + ') | ' : '') + 'CBS Vendas: alíquota ' + (aliqCbs*100).toFixed(2) + '% → débito R$ ' + cbsDebito.toFixed(2) + ' | CBS Compras: alíquota ' + (aliqCbsCompras*100).toFixed(2) + '% → créditos R$ ' + credCbs.toFixed(2) + ' = líquida R$ ' + cbsLiquida.toFixed(2),
-        total: dasReduzido.toFixed(2) + ' + ' + cbsLiquida.toFixed(2) + ' + ' + encargosFora.toFixed(2) + ' = ' + totalHibrido.toFixed(2)
+        total: dasReduzido.toFixed(2) + ' + ' + cbsLiquida.toFixed(2) + ' + ' + ibsLiquido.toFixed(2) + ' + ' + encargosFora.toFixed(2) + ' = ' + totalHibrido.toFixed(2)
       }
     };
   }
@@ -4556,10 +4588,10 @@ function calcularComparacaoSimplesHibrido(formData) {
       dasIntegral: dasIntegral,
       reparticao: rep,
       parcelaCbsRetiradaDoDas: parcelaCbsDentro,
-      parcelaIbsRetiradaDoDas: 0,
+      parcelaIbsRetiradaDoDas: parcelaIbsDentro,
       dasReduzido: dasReduzido,
       cbsLiquida: cbsLiquida,
-      ibsLiquido: 0,
+      ibsLiquido: ibsLiquido,
       total: totalHibrido,
       media: mediaHibrido,
       aliquota: aliquotaHibrido,
@@ -4567,19 +4599,20 @@ function calcularComparacaoSimplesHibrido(formData) {
     },
     comparacaoFinanceira: impacto,
       CBS: { aliq: aliqCbs * 100, aliqPadrao: aliqCbsPadrao * 100, aliqCompras: aliqCbsCompras * 100, debito: cbsDebito, credito: credCbs, liquida: cbsLiquida, reducao: cbsReducao ? { pct: cbsReducao.pct * 100, descricao: cbsReducao.descricao, baseLegal: cbsReducao.baseLegal, artigo: cbsReducao.artigo, paragrafo: cbsReducao.paragrafo, inciso: cbsReducao.inciso, requisitos: cbsReducao.requisitos, condicional: cbsReducao.condicional } : null },
-      IBS: { aliq: aliqIbs2027 * 100, debito: ibsDebito, credito: credIbs, liquido: ibsLiquido },
+      IBS: { aliq: aliqIbs * 100, debito: ibsDebito, credito: credIbs, liquido: ibsLiquido },
       conclusao: {
-      vencedor: impacto.tipo === 'AUMENTO' ? 'Simples tradicional' : (impacto.tipo === 'ECONOMIA' ? 'Simples h\u00EDbrido' : 'Equivalentes'),
+      vencedor: impacto.tipo === 'AUMENTO' ? 'Simples tradicional' : (impacto.tipo === 'ECONOMIA' ? 'Simples híbrido' : 'Equivalentes'),
       tipoImpacto: impacto.tipo,
-      texto: 'Com base nas premissas informadas, o Simples Tradicional apresenta menor carga tribut\u00E1ria anual neste cen\u00E1rio. A op\u00E7\u00E3o pelo Simples H\u00EDbrido ' + (impacto.tipo === 'AUMENTO' ? 'aumentaria' : impacto.tipo === 'ECONOMIA' ? 'reduziria' : 'manteria') + ' a carga tribut\u00E1ria em R$ ' + Math.abs(impacto.valorAnual).toFixed(2).replace('.',',') + ' por ano (' + impacto.percentual.toFixed(2).replace('.',',') + '%), considerando os par\u00E2metros utilizados na simula\u00E7\u00E3o.',
+      texto: 'Com base nas premissas informadas, o Simples Tradicional apresenta menor carga tributária anual neste cenário. A opção pelo Simples Híbrido ' + (impacto.tipo === 'AUMENTO' ? 'aumentaria' : impacto.tipo === 'ECONOMIA' ? 'reduziria' : 'manteria') + ' a carga tributária em R$ ' + Math.abs(impacto.valorAnual).toFixed(2).replace('.',',') + ' por ano (' + impacto.percentual.toFixed(2).replace('.',',') + '%), considerando os parâmetros utilizados na simulação.',
       impactoLabel: impacto.tipo === 'AUMENTO' ? 'Aumento anual' : 'Economia anual',
       valorAnual: impacto.valorAnual, valorMensal: impacto.valorMensal
     },
     alertas: [],
     memoriaCalculo: {
-      das: 'DAS integral: R$ ' + dasIntegral.toFixed(2).replace('.',',') + ' \u2014 CBS retirada: R$ ' + parcelaCbsDentro.toFixed(2).replace('.',',') + ' = R$ ' + dasReduzido.toFixed(2).replace('.',','),
-      cbs: (cbsReducao ? 'Redu\u00E7\u00E3o CBS: ' + (cbsReducao.pct*100).toFixed(0) + '% (' + cbsReducao.descricao + ', ' + cbsReducao.baseLegal + ') | ' : '') + 'CBS Vendas: al\u00EDquota ' + (aliqCbs*100).toFixed(2).replace('.',',') + '% \u2192 d\u00E9bito R$ ' + cbsDebito.toFixed(2).replace('.',',') + ' | CBS Compras: al\u00EDquota ' + (aliqCbsCompras*100).toFixed(2).replace('.',',') + '% \u2192 cr\u00E9ditos R$ ' + credCbs.toFixed(2).replace('.',',') + ' = R$ ' + cbsLiquida.toFixed(2).replace('.',','),
-      total: 'R$ ' + dasReduzido.toFixed(2).replace('.',',') + ' + R$ ' + cbsLiquida.toFixed(2).replace('.',',') + ' + R$ ' + encargosFora.toFixed(2).replace('.',',') + ' = R$ ' + totalHibrido.toFixed(2).replace('.',',')
+      das: 'DAS integral: R$ ' + dasIntegral.toFixed(2).replace('.',',') + ' — CBS retirada: R$ ' + parcelaCbsDentro.toFixed(2).replace('.',',') + ' (' + (rep.cbs*100).toFixed(2) + '%) — IBS retirado: R$ ' + parcelaIbsDentro.toFixed(2).replace('.',',') + ' (' + (rep.ibs*100).toFixed(2) + '%) = R$ ' + dasReduzido.toFixed(2).replace('.',','),
+      cbs: (cbsReducao ? 'Redução CBS: ' + (cbsReducao.pct*100).toFixed(0) + '% (' + cbsReducao.descricao + ', ' + cbsReducao.baseLegal + ') | ' : '') + 'CBS Vendas: alíquota ' + (aliqCbs*100).toFixed(2).replace('.',',') + '% → débito R$ ' + cbsDebito.toFixed(2).replace('.',',') + ' | CBS Compras: alíquota ' + (aliqCbsCompras*100).toFixed(2).replace('.',',') + '% → créditos R$ ' + credCbs.toFixed(2).replace('.',',') + ' = R$ ' + cbsLiquida.toFixed(2).replace('.',','),
+      ibs: 'IBS Vendas: alíquota ' + (aliqIbs*100).toFixed(2).replace('.',',') + '% → débito R$ ' + ibsDebito.toFixed(2).replace('.',',') + ' | IBS Compras: créditos R$ ' + credIbs.toFixed(2).replace('.',',') + ' = R$ ' + ibsLiquido.toFixed(2).replace('.',','),
+      total: 'R$ ' + dasReduzido.toFixed(2).replace('.',',') + ' + R$ ' + cbsLiquida.toFixed(2).replace('.',',') + ' + R$ ' + ibsLiquido.toFixed(2).replace('.',',') + ' + R$ ' + encargosFora.toFixed(2).replace('.',',') + ' = R$ ' + totalHibrido.toFixed(2).replace('.',',')
     }
   };
   } catch(err) {
@@ -4590,10 +4623,10 @@ function calcularComparacaoSimplesHibrido(formData) {
 
 function calcularComparacaoPresumidoReforma(formData) {
   try {
-  var rbt12 = typeof formData.rbt12Input === 'number' ? formData.rbt12Input : (parseFloat(String(formData.rbt12Input).replace(/\./g,'').replace(',','.')) || 0);
-  var comprasAnual = typeof formData.comprasInput === 'number' ? formData.comprasInput : (parseFloat(String(formData.comprasInput).replace(/\./g,'').replace(',','.')) || 0);
-  var sal = parseFloat(formData.salarios) || 0;
-  var prol = parseFloat(formData.prolabore) || 0;
+  var rbt12 = typeof formData.rbt12Input === 'number' ? formData.rbt12Input : parseCurrencyPtBR(formData.rbt12Input);
+  var comprasAnual = typeof formData.comprasInput === 'number' ? formData.comprasInput : parseCurrencyPtBR(formData.comprasInput);
+  var sal = parseCurrencyPtBR(formData.salarios);
+  var prol = parseCurrencyPtBR(formData.prolabore);
   var inssP = (parseFloat(formData.inss) || 20) / 100;
   var ratP = (parseFloat(formData.rat) || 3) / 100;
   var tercP = (parseFloat(formData.terceiros) || 3.3) / 100;
@@ -4730,16 +4763,16 @@ function buildPdfHtmlFromObject(results, callback) {
     var receitaPdf = st.rbt12 || 0;
     var aliqHibPdf = receitaPdf > 0 ? (sh.total / receitaPdf * 100) : 0;
 
-    html += '<h1>Compara\u00E7\u00E3o: Simples Tradicional \u00D7 Simples H\u00EDbrido (' + (results.anoSimulacao||'2027') + ')</h1>';
+    html += '<h1>Comparação: Simples Tradicional × Simples Híbrido (' + (results.anoSimulacao||'2027') + ')</h1>';
 
     // Resumo Executivo
     html += '<h2>Resumo Executivo</h2>';
-    html += '<table><tr style="background:#EFF6FF"><th>Indicador</th><th>Simples Tradicional</th><th>Simples H\u00EDbrido</th></tr>';
+    html += '<table><tr style="background:#EFF6FF"><th>Indicador</th><th>Simples Tradicional</th><th>Simples Híbrido</th></tr>';
     html += '<tr><td class="b">Total anual</td><td class="val">R$ ' + st.total.toFixed(2).replace('.',',') + '</td><td class="val">R$ ' + (sh.total||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td>Total mensal</td><td class="val">R$ ' + (st.media||st.total/12).toFixed(2).replace('.',',') + '</td><td class="val">R$ ' + (sh.media||sh.total/12).toFixed(2).replace('.',',') + '</td></tr>';
-    html += '<tr><td>Al\u00EDquota efetiva</td><td class="r">' + (st.aliquota||0).toFixed(2).replace('.',',') + '%</td><td class="r">' + aliqHibPdf.toFixed(2).replace('.',',') + '%</td></tr>';
-    html += '<tr style="background:#FFF7ED"><td class="b">Diferen\u00E7a anual</td><td colspan="2" class="val" style="color:#DC2626">R$ ' + (cmp.valorAnual||0).toFixed(2).replace('.',',') + '</td></tr>';
-    html += '<tr><td>Varia\u00E7\u00E3o percentual</td><td colspan="2" class="r">' + (cmp.percentual||0).toFixed(2).replace('.',',') + '%</td></tr></table>';
+    html += '<tr><td>Alíquota efetiva</td><td class="r">' + (st.aliquota||0).toFixed(2).replace('.',',') + '%</td><td class="r">' + aliqHibPdf.toFixed(2).replace('.',',') + '%</td></tr>';
+    html += '<tr style="background:#FFF7ED"><td class="b">Diferença anual</td><td colspan="2" class="val" style="color:#DC2626">R$ ' + (cmp.valorAnual||0).toFixed(2).replace('.',',') + '</td></tr>';
+    html += '<tr><td>Variação percentual</td><td colspan="2" class="r">' + (cmp.percentual||0).toFixed(2).replace('.',',') + '%</td></tr></table>';
 
     // Detalhamento ST
     html += '<h2>Simples Tradicional</h2><table>';
@@ -4748,55 +4781,55 @@ function buildPdfHtmlFromObject(results, callback) {
     html += '<tr style="font-weight:700"><td>Total anual</td><td class="val">R$ ' + st.total.toFixed(2).replace('.',',') + '</td></tr></table>';
 
     // Detalhamento SH
-    html += '<h2>Simples H\u00EDbrido</h2><table>';
+    html += '<h2>Simples Híbrido</h2><table>';
     html += '<tr><td>DAS integral</td><td class="val">R$ ' + (sh.dasIntegral||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td>(-) CBS retirada do DAS</td><td class="val">-R$ ' + (sh.parcelaCbsRetiradaDoDas||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr style="font-weight:700"><td>DAS ajustado</td><td class="val">R$ ' + (sh.dasReduzido||0).toFixed(2).replace('.',',') + '</td></tr>';
-    html += '<tr><td>CBS l\u00EDquida</td><td class="val">R$ ' + (sh.cbsLiquida||0).toFixed(2).replace('.',',') + '</td></tr>';
+    html += '<tr><td>CBS líquida</td><td class="val">R$ ' + (sh.cbsLiquida||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr style="font-weight:700;background:#FFF7ED"><td>Total</td><td class="val">R$ ' + (sh.total||0).toFixed(2).replace('.',',') + '</td></tr></table>';
 
     // CBS detalhada
     if (cbsPdf.debito > 0) {
-      html += '<h2>CBS — Apura\u00E7\u00E3o Fora do DAS</h2><table>';
+      html += '<h2>CBS — Apuração Fora do DAS</h2><table>';
       if (cbsPdf.reducao) {
         html += '<tr><td colspan="2" style="background:#ECFDF5;color:#065F46;font-weight:600">ATIVIDADE POTENCIALMENTE BENEFICIADA</td></tr>';
-        html += '<tr><td colspan="2" style="font-size:9px;color:#065F46">' + cbsPdf.reducao.descricao + ' — ' + cbsPdf.reducao.baseLegal.replace(/,/g, ' \u2013') + (cbsPdf.reducao.artigo ? ', art. ' + cbsPdf.reducao.artigo : '') + (cbsPdf.reducao.inciso ? ', inciso ' + cbsPdf.reducao.inciso : '') + '</td></tr>';
+        html += '<tr><td colspan="2" style="font-size:9px;color:#065F46">' + cbsPdf.reducao.descricao + ' — ' + cbsPdf.reducao.baseLegal.replace(/,/g, ' –') + (cbsPdf.reducao.artigo ? ', art. ' + cbsPdf.reducao.artigo : '') + (cbsPdf.reducao.inciso ? ', inciso ' + cbsPdf.reducao.inciso : '') + '</td></tr>';
         if (cbsPdf.reducao.condicional) {
-          html += '<tr><td colspan="2" style="font-size:8px;color:#D97706">Benef\u00EDcio condicional: a aplica\u00E7\u00E3o depende do atendimento dos requisitos legais.</td></tr>';
+          html += '<tr><td colspan="2" style="font-size:8px;color:#D97706">Benefício condicional: a aplicação depende do atendimento dos requisitos legais.</td></tr>';
         }
         if (cbsPdf.reducao.requisitos) html += '<tr><td colspan="2" style="font-size:8px;color:#6B7A8F">Requisitos: ' + cbsPdf.reducao.requisitos + '</td></tr>';
       }
     html += '<tr><td colspan="2" style="background:#EFF6FF;color:#1E40AF;font-weight:600">CBS sobre vendas</td></tr>';
-    html += '<tr><td>Al\u00EDquota padr\u00E3o</td><td class="r">' + (cbsPdf.aliqPadrao||cbsPdf.aliq).toFixed(2).replace('.',',') + '%</td></tr>';
+    html += '<tr><td>Alíquota padrão</td><td class="r">' + (cbsPdf.aliqPadrao||cbsPdf.aliq).toFixed(2).replace('.',',') + '%</td></tr>';
     if (cbsPdf.reducao) {
-      html += '<tr><td>Redu\u00E7\u00E3o (' + cbsPdf.reducao.pct.toFixed(0) + '%)</td><td class="r">-' + ((cbsPdf.aliqPadrao||0) - (cbsPdf.aliq||0)).toFixed(2).replace('.',',') + '%</td></tr>';
+      html += '<tr><td>Redução (' + cbsPdf.reducao.pct.toFixed(0) + '%)</td><td class="r">-' + ((cbsPdf.aliqPadrao||0) - (cbsPdf.aliq||0)).toFixed(2).replace('.',',') + '%</td></tr>';
     }
-    html += '<tr><td>Al\u00EDquota efetiva</td><td class="r b">' + (cbsPdf.aliq||0).toFixed(2).replace('.',',') + '%</td></tr>';
-    html += '<tr><td>D\u00E9bito</td><td class="val">R$ ' + (cbsPdf.debito||0).toFixed(2).replace('.',',') + '</td></tr>';
+    html += '<tr><td>Alíquota efetiva</td><td class="r b">' + (cbsPdf.aliq||0).toFixed(2).replace('.',',') + '%</td></tr>';
+    html += '<tr><td>Débito</td><td class="val">R$ ' + (cbsPdf.debito||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td colspan="2" style="background:#ECFDF5;color:#065F46;font-weight:600">CBS sobre compras</td></tr>';
     var aliqComprasPdf = cbsPdf.aliqCompras || cbsPdf.aliqPadrao || cbsPdf.aliq || 0;
-    html += '<tr><td>Al\u00EDquota nas aquisi\u00E7\u00F5es</td><td class="r">' + aliqComprasPdf.toFixed(2).replace('.',',') + '%</td></tr>';
-    html += '<tr><td>Cr\u00E9ditos</td><td class="val">R$ ' + (cbsPdf.credito||0).toFixed(2).replace('.',',') + '</td></tr>';
-    html += '<tr style="font-weight:700;background:#ECFDF5"><td>CBS l\u00EDquida</td><td class="val">R$ ' + (cbsPdf.liquida||0).toFixed(2).replace('.',',') + '</td></tr></table>';
+    html += '<tr><td>Alíquota nas aquisições</td><td class="r">' + aliqComprasPdf.toFixed(2).replace('.',',') + '%</td></tr>';
+    html += '<tr><td>Créditos</td><td class="val">R$ ' + (cbsPdf.credito||0).toFixed(2).replace('.',',') + '</td></tr>';
+    html += '<tr style="font-weight:700;background:#ECFDF5"><td>CBS líquida</td><td class="val">R$ ' + (cbsPdf.liquida||0).toFixed(2).replace('.',',') + '</td></tr></table>';
     }
 
     // Memória de cálculo
-    html += '<h2>Mem\u00F3ria de C\u00E1lculo</h2>';
+    html += '<h2>Memória de Cálculo</h2>';
     if (mem.das) html += '<div class="note">' + mem.das + '</div>';
     if (mem.cbs) html += '<div class="note">' + mem.cbs + '</div>';
     if (mem.total) html += '<div class="note">' + mem.total + '</div>';
 
     // Conclusão
     if (results.conclusao?.texto) {
-      html += '<h2>Conclus\u00E3o</h2><p class="note">' + results.conclusao.texto + '</p>';
+      html += '<h2>Conclusão</h2><p class="note">' + results.conclusao.texto + '</p>';
     }
   } else if (results.tipoComparacao === 'PRESUMIDO_ATUAL_VS_REFORMA') {
     var lp = results.lucroPresumidoAtual || {};
     var fut = results.cenarioFuturo || {};
     var cmp = results.comparacao || {};
-    html += '<h1>Compara\u00E7\u00E3o: LP Atual \u00D7 Transi\u00E7\u00E3o 2027</h1>';
+    html += '<h1>Comparação: LP Atual × Transição 2027</h1>';
     html += '<p>' + (results.escopo||'') + '</p>';
-    html += '<h2>LP \u2014 Cen\u00E1rio Atual</h2><table><tr><td>Total anual</td><td class="r b">R$ ' + lp.total.toFixed(2).replace('.',',') + '</td></tr>';
+    html += '<h2>LP — Cenário Atual</h2><table><tr><td>Total anual</td><td class="r b">R$ ' + lp.total.toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td>IRPJ normal</td><td class="r">R$ ' + (lp.irpj15||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td>Adicional IRPJ</td><td class="r">R$ ' + (lp.irpjAdic||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td>CSLL</td><td class="r">R$ ' + (lp.csll||0).toFixed(2).replace('.',',') + '</td></tr>';
@@ -4805,19 +4838,19 @@ function buildPdfHtmlFromObject(results, callback) {
     html += '<tr><td>ICMS</td><td class="r">R$ ' + (lp.icms||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td>IPI</td><td class="r">R$ ' + (lp.ipi||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td>Encargos</td><td class="r">R$ ' + (lp.encargos||0).toFixed(2).replace('.',',') + '</td></tr></table>';
-    html += '<h2>' + (fut.rotulo||'LP \u2014 Cen\u00E1rio 2027') + '</h2><table><tr><td>Total 2027</td><td class="r b">R$ ' + fut.total.toFixed(2).replace('.',',') + '</td></tr>';
-    html += '<tr><td>Al\u00EDquota efetiva total</td><td class="r b">' + (fut.aliquotaTotal||0).toFixed(2).replace('.',',') + '%</td></tr>';
+    html += '<h2>' + (fut.rotulo||'LP — Cenário 2027') + '</h2><table><tr><td>Total 2027</td><td class="r b">R$ ' + fut.total.toFixed(2).replace('.',',') + '</td></tr>';
+    html += '<tr><td>Alíquota efetiva total</td><td class="r b">' + (fut.aliquotaTotal||0).toFixed(2).replace('.',',') + '%</td></tr>';
     html += '<tr><td>IRPJ normal</td><td class="r">R$ ' + (fut.irpj15||lp.irpj15||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td>Adicional IRPJ</td><td class="r">R$ ' + (fut.irpjAdic||lp.irpjAdic||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td>CSLL</td><td class="r">R$ ' + (fut.csll||lp.csll||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td>CBS</td><td class="r b">R$ ' + (fut.cbs||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td>IBS (0,10%)</td><td class="r b">R$ ' + (fut.ibs||0).toFixed(2).replace('.',',') + '</td></tr>';
-    html += '<tr><td>PIS/COFINS</td><td>' + (fut.pisCofinsStatus||'Substitu\u00EDdos') + '</td></tr>';
+    html += '<tr><td>PIS/COFINS</td><td>' + (fut.pisCofinsStatus||'Substituídos') + '</td></tr>';
     html += '<tr><td>ISS</td><td class="r">R$ ' + (fut.iss||lp.iss||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td>ICMS</td><td class="r">R$ ' + (fut.icms||lp.icms||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr style="font-weight:700;background:#FFF7ED"><td>Impacto</td><td class="r">R$ ' + (cmp.valorAnual||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td>Impacto percentual</td><td class="r">' + (cmp.percentual||0).toFixed(2).replace('.',',') + '%</td></tr></table>';
-    if (fut.memoria) html += '<div class="note">Mem\u00F3ria: ' + fut.memoria + '</div>';
+    if (fut.memoria) html += '<div class="note">Memória: ' + fut.memoria + '</div>';
   } else {
     // Default: SIMPLES_VS_PRESUMIDO
     var sn = results.sn || {};
@@ -4829,16 +4862,16 @@ function buildPdfHtmlFromObject(results, callback) {
     var snNaoElegivel = eleg.snElegivel === false;
     var vencedor = results.conclusao?.vencedor || '—';
     var economia = results.kpi?.economia || 0;
-    html += '<h1>Compara\u00E7\u00E3o: Simples Nacional \u00D7 Lucro Presumido</h1>';
+    html += '<h1>Comparação: Simples Nacional × Lucro Presumido</h1>';
     html += '<table><tr><th>Indicador</th><th>Simples Nacional</th><th>Lucro Presumido</th></tr>';
     html += '<tr><td class="b">Total anual</td><td class="val">' + (snNaoElegivel ? 'N/A' : 'R$ ' + (sn.total||0).toFixed(2).replace('.',',')) + '</td><td class="val">R$ ' + (lp.total||0).toFixed(2).replace('.',',') + '</td></tr>';
-    html += '<tr><td>M\u00E9dia mensal</td><td class="val">' + (snNaoElegivel ? 'N/A' : 'R$ ' + (sn.media||0).toFixed(2).replace('.',',')) + '</td><td class="val">R$ ' + (lp.media||0).toFixed(2).replace('.',',') + '</td></tr>';
-    html += '<tr><td>Al\u00EDquota efetiva</td><td class="r">' + (snNaoElegivel ? 'N/A' : (sn.aliquota||0).toFixed(2).replace('.',',') + '%') + '</td><td class="r">' + (lp.aliquota||0).toFixed(2).replace('.',',') + '%</td></tr>';
+    html += '<tr><td>Média mensal</td><td class="val">' + (snNaoElegivel ? 'N/A' : 'R$ ' + (sn.media||0).toFixed(2).replace('.',',')) + '</td><td class="val">R$ ' + (lp.media||0).toFixed(2).replace('.',',') + '</td></tr>';
+    html += '<tr><td>Alíquota efetiva</td><td class="r">' + (snNaoElegivel ? 'N/A' : (sn.aliquota||0).toFixed(2).replace('.',',') + '%') + '</td><td class="r">' + (lp.aliquota||0).toFixed(2).replace('.',',') + '%</td></tr>';
     html += '</table>';
     html += '<h2>Detalhamento do Simples Nacional</h2><table>';
     html += '<tr><td>Total anual</td><td class="val">' + (snNaoElegivel ? 'N/A' : 'R$ ' + (sn.total||0).toFixed(2).replace('.',',')) + '</td></tr>';
     html += '<tr><td>DAS anual</td><td class="val">' + (snNaoElegivel ? 'N/A' : 'R$ ' + (sn.dasAnual||0).toFixed(2).replace('.',',')) + '</td></tr>';
-    html += '<tr><td>Anexo</td><td>' + (sn.anexo||'\u2014') + '</td></tr>';
+    html += '<tr><td>Anexo</td><td>' + (sn.anexo||'—') + '</td></tr>';
     if (sn.sublimiteIss || sn.sublimiteIcms) html += '<tr><td>' + (sn.sublimiteIss ? 'ISS' : 'ICMS') + ' fora do DAS</td><td class="val">R$ ' + (sn.sublimiteValor||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '</table>';
     html += '<h2>Detalhamento do Lucro Presumido</h2><table>';
@@ -4851,20 +4884,20 @@ function buildPdfHtmlFromObject(results, callback) {
     html += '<tr><td>ICMS</td><td class="val">R$ ' + (lp.icms||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '<tr><td>Encargos</td><td class="val">R$ ' + (lp.encargos||0).toFixed(2).replace('.',',') + '</td></tr>';
     html += '</table>';
-    if (vencedor && vencedor !== '\u2014' && vencedor !== 'Empate') {
+    if (vencedor && vencedor !== '—' && vencedor !== 'Empate') {
       html += '<h2>Resultado</h2><table><tr><td class="b">Regime com menor carga</td><td class="val">' + vencedor + '</td></tr>';
       html += '<tr><td>Economia anual</td><td class="val">R$ ' + economia.toFixed(2).replace('.',',') + '</td></tr>';
-      html += '<tr><td>Conclus\u00E3o</td><td>' + (results.conclusao?.texto||'') + '</td></tr></table>';
+      html += '<tr><td>Conclusão</td><td>' + (results.conclusao?.texto||'') + '</td></tr></table>';
     }
-    if (results.rec?.fatores && results.rec.fatores !== '\u2014') {
-      html += '<div class="note"><strong>Por que este regime foi recomendado?</strong><br>\u2022 ' + results.rec.fatores.replace(/<br>/g,'<br>\u2022 ') + '</div>';
+    if (results.rec?.fatores && results.rec.fatores !== '—') {
+      html += '<div class="note"><strong>Por que este regime foi recomendado?</strong><br>• ' + results.rec.fatores.replace(/<br>/g,'<br>• ') + '</div>';
     }
     if (sub.status && sub.status !== 'NAO_EXCEDIDO') {
       html += '<div class="note"><strong>Status do sublimite:</strong> ' + sub.justificativaLegal + '</div>';
     }
   }
 
-  html += '<div class="note">Relat\u00F3rio gerado por CompareTributo. Data: ' + new Date().toLocaleString('pt-BR') + '</div>';
+  html += '<div class="note">Relatório gerado por CompareTributo. Data: ' + new Date().toLocaleString('pt-BR') + '</div>';
   html += '</body></html>';
   callback(html);
 }

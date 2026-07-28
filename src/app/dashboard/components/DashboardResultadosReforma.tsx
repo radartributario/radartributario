@@ -36,7 +36,7 @@ export default function DashboardResultadosReforma({
   if (r.error) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <p className="text-lg text-red-600 font-medium">Erro no c\u00E1lculo: {(r.error as string)}</p>
+        <p className="text-lg text-red-600 font-medium">Erro no cálculo: {(r.error as string)}</p>
         <button onClick={onEdit}
           className="mt-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 px-6 rounded-xl font-semibold transition-colors">
           Editar dados
@@ -57,7 +57,7 @@ export default function DashboardResultadosReforma({
   if (!atualTotal && !futuroTotal) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <p className="text-base text-slate-400">Nenhum resultado dispon\u00EDvel. Preencha os dados e gere o diagn\u00F3stico.</p>
+        <p className="text-base text-slate-400">Nenhum resultado disponível. Preencha os dados e gere o diagnóstico.</p>
       </div>
     );
   }
@@ -75,20 +75,20 @@ export default function DashboardResultadosReforma({
     ? (mem.previsaoCom as Record<string, unknown>) : null;
 
   const economiaLabel = isAumento ? "Aumento anual" : "Economia anual";
-  const vencedor = !isAumento ? "Cen\u00E1rio Atual" : "Cen\u00E1rio Futuro";
+  const vencedor = !isAumento ? "Cenário Atual" : "Cenário Futuro";
 
   return (
     <div className="space-y-6">
 
       <HeaderComparacao
-        titulo="Compara\u00E7\u00E3o\u00A0Tribut\u00E1ria\u00A0com\u00A0a\u00A0Reforma"
-        descricao="An\u00E1lise comparativa entre o sistema tribut\u00E1rio atual (Lucro Presumido) e o cen\u00E1rio futuro ap\u00F3s a implementa\u00E7\u00E3o da Reforma Tribut\u00E1ria, considerando as altera\u00E7\u00F5es na CBS e IBS."
+        titulo="Comparação Tributária com a Reforma"
+        descricao="Análise comparativa entre o sistema tributário atual (Lucro Presumido) e o cenário futuro após a implementação da Reforma Tributária, considerando as alterações na CBS e IBS."
         icone={<Scale className="w-7 h-7 text-blue-300 mt-0.5 shrink-0" />}
       />
 
       <ResumoExecutivo
         card1={{
-          titulo: "Cen\u00E1rio Atual (LP)",
+          titulo: "Cenário Atual (LP)",
           total: atualTotal,
           rotuloTotal: "Total anual estimado",
           corBorda: "border-slate-200",
@@ -98,11 +98,11 @@ export default function DashboardResultadosReforma({
           icone: <Receipt className="w-5 h-5 text-blue-600" />,
           linhas: [
             { label: "Total mensal", valor: "R$ " + fmt(atualTotal / 12) },
-            { label: "Al\u00EDquota efetiva", valor: fmtPct(aliqAtual), cor: "text-blue-700" },
+            { label: "Alíquota efetiva", valor: fmtPct(aliqAtual), cor: "text-blue-700" },
           ]
         }}
         card2={{
-          titulo: "Cen\u00E1rio Futuro (P\u00F3s-Reforma)",
+          titulo: "Cenário Futuro (Pós-Reforma)",
           total: futuroTotal,
           rotuloTotal: "Total anual estimado",
           corBorda: "border-amber-200",
@@ -112,7 +112,7 @@ export default function DashboardResultadosReforma({
           icone: <TrendingUp className="w-5 h-5 text-amber-600" />,
           linhas: [
             { label: "Total mensal", valor: "R$ " + fmt(futuroTotal / 12) },
-            { label: "Al\u00EDquota efetiva", valor: fmtPct(aliqFuturo), cor: "text-amber-800" },
+            { label: "Alíquota efetiva", valor: fmtPct(aliqFuturo), cor: "text-amber-800" },
           ]
         }}
         cardImpacto={{
@@ -127,14 +127,14 @@ export default function DashboardResultadosReforma({
 
       {previsaoSem && previsaoCom && (
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
-          <h3 className="text-lg font-semibold text-slate-700 mb-3">Mem\u00F3ria de C\u00E1lculo</h3>
+          <h3 className="text-lg font-semibold text-slate-700 mb-3">Memória de Cálculo</h3>
           <div className="space-y-2 text-base">
-            <div className="flex justify-between"><span className="text-slate-400">Situa\u00E7\u00E3o Atual</span><span className="font-semibold text-slate-800">R$ {fmt(typeof previsaoSem.total === "number" ? previsaoSem.total : 0)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Ap\u00F3s Reforma</span><span className="font-semibold text-slate-800">R$ {fmt(typeof previsaoCom.total === "number" ? previsaoCom.total : 0)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Situação Atual</span><span className="font-semibold text-slate-800">R$ {fmt(typeof previsaoSem.total === "number" ? previsaoSem.total : 0)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Após Reforma</span><span className="font-semibold text-slate-800">R$ {fmt(typeof previsaoCom.total === "number" ? previsaoCom.total : 0)}</span></div>
             <div className="flex justify-between border-t border-slate-200 pt-2">
-              <span className="text-slate-400">Diferen\u00E7a</span>
+              <span className="text-slate-400">Diferença</span>
               <span className={`font-bold ${isAumento ? "text-amber-600" : "text-green-600"}`}>
-                {isAumento ? "+" : "\u2013"}R$ {fmt(impactoAnual)}
+                {isAumento ? "+" : "–"}R$ {fmt(impactoAnual)}
               </span>
             </div>
           </div>
@@ -158,12 +158,12 @@ export default function DashboardResultadosReforma({
       <div className="flex flex-col sm:flex-row gap-3">
         <button onClick={onEdit}
           className="flex-1 bg-white border-2 border-slate-300 hover:bg-slate-50 text-slate-700 py-4 rounded-2xl text-base font-semibold transition-colors">
-          Editar dados da simula\u00E7\u00E3o
+          Editar dados da simulação
         </button>
         {onGeneratePdf && (
           <button onClick={handlePdf} type="button" disabled={pdfLoading || !confirmed}
             className="flex-1 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-2xl text-base font-semibold transition-colors">
-            {pdfLoading ? "Gerando relat\u00F3rio..." : !confirmed ? "Confirme as premissas acima" : "Gerar relat\u00F3rio em PDF"}
+            {pdfLoading ? "Gerando relatório..." : !confirmed ? "Confirme as premissas acima" : "Gerar relatório em PDF"}
           </button>
         )}
       </div>

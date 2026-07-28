@@ -29,19 +29,19 @@ export function fmt(v: number): string {
 }
 
 export function fmtPct(v: number): string {
-  if (!isFinite(v) || v == null) return "\u2014";
+  if (!isFinite(v) || v == null) return "—";
   return v.toFixed(2).replace(".", ",") + "%";
 }
 
 export function fmtBaseLegal(b: BaseLegalInfo | null | undefined): string {
   if (!b) return "";
   let t = b.baseLegal || "";
-  t = t.replace(/,/g, " \u2013");
+  t = t.replace(/,/g, " –");
   if (!t.includes("art.") && b.artigo) {
     let art = "art. " + b.artigo;
     if (b.inciso) art += ", inciso " + b.inciso;
     if (b.paragrafo) art += ", " + b.paragrafo;
-    t += " \u2013 " + art;
+    t += " – " + art;
   }
   return t;
 }
@@ -237,11 +237,11 @@ export function CardImpacto({ isAumento, valorAnual, rotulo, valorMensal, variac
       <p className={`text-base mt-0.5 mb-4 ${corLabel}`}>{rotulo}</p>
       <div className="space-y-1">
         <div className="flex justify-between items-baseline gap-4">
-          <span className={corLabel}>Diferen\u00E7a mensal</span>
+          <span className={corLabel}>Diferença mensal</span>
           <MoneyValue value={valorMensal} size="sm" color={corValor} />
         </div>
         <div className="flex justify-between items-baseline gap-4">
-          <span className={corLabel}>Varia\u00E7\u00E3o</span>
+          <span className={corLabel}>Variação</span>
           <span className={`font-bold text-lg whitespace-nowrap ${corValor}`}>{fmtPct(variacao)}</span>
         </div>
         {flagMenorCarga && (
@@ -276,7 +276,7 @@ export function CardConclusao({ isAumento, texto, vencedor, impactoAnual, impact
       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
         <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-base font-bold ${badgeBg} shrink-0`}>
           {badgeIcon}
-          {isAumento ? "Aumento de carga" : "Menor carga tribut\u00E1ria"}
+          {isAumento ? "Aumento de carga" : "Menor carga tributária"}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-base leading-relaxed text-slate-700">{texto}</p>
@@ -321,7 +321,7 @@ export function CardCBS({ cbs }: CardCBSProps) {
     <div className="bg-white rounded-2xl border border-cyan-200 p-6 shadow-sm">
       <div className="flex items-center gap-2 mb-5">
         <Receipt className="w-6 h-6 text-cyan-600 shrink-0" />
-        <h2 className="text-xl font-bold text-slate-800">CBS \u2014 Apura\u00E7\u00E3o Fora do DAS</h2>
+        <h2 className="text-xl font-bold text-slate-800">CBS — Apuração Fora do DAS</h2>
       </div>
 
       {cbs.reducao ? (
@@ -331,15 +331,15 @@ export function CardCBS({ cbs }: CardCBSProps) {
             <div>
               <p className="text-base font-bold text-emerald-800">ATIVIDADE POTENCIALMENTE BENEFICIADA</p>
               <p className="text-base text-emerald-700 mt-1 leading-relaxed">
-                Esta atividade pode usufruir da redu\u00E7\u00E3o da CBS prevista na {fmtBaseLegal(cbs.reducao)}.
+                Esta atividade pode usufruir da redução da CBS prevista na {fmtBaseLegal(cbs.reducao)}.
               </p>
               {cbs.reducao.condicional && (
                 <div className="flex items-start gap-2 mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
                   <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-base font-semibold text-amber-800">Benef\u00EDcio condicional</p>
+                    <p className="text-base font-semibold text-amber-800">Benefício condicional</p>
                     <p className="text-base text-amber-700">
-                      A aplica\u00E7\u00E3o do benef\u00EDcio depende do atendimento dos requisitos legais previstos no {cbs.reducao.paragrafo ? cbs.reducao.paragrafo + " " : ""}do mesmo artigo.
+                      A aplicação do benefício depende do atendimento dos requisitos legais previstos no {cbs.reducao.paragrafo ? cbs.reducao.paragrafo + " " : ""}do mesmo artigo.
                     </p>
                     {cbs.reducao.requisitos && (
                       <p className="text-base text-amber-600 mt-1 italic">{cbs.reducao.requisitos}</p>
@@ -352,7 +352,7 @@ export function CardCBS({ cbs }: CardCBSProps) {
         </div>
       ) : (
         <div className="bg-slate-50 rounded-xl p-4 mb-5">
-          <p className="text-base text-slate-500">Premissa utilizada para esta simula\u00E7\u00E3o.</p>
+          <p className="text-base text-slate-500">Premissa utilizada para esta simulação.</p>
         </div>
       )}
 
@@ -363,17 +363,17 @@ export function CardCBS({ cbs }: CardCBSProps) {
             <h4 className="text-lg font-bold text-blue-800">CBS sobre Vendas</h4>
           </div>
           <div className="space-y-2">
-            <Row label="Al\u00EDquota padr\u00E3o" value={fmtPct(cbs.aliqPadrao ?? 0)} />
+            <Row label="Alíquota padrão" value={fmtPct(cbs.aliqPadrao ?? 0)} />
             {cbs.reducao && (
-              <Row label={`Redu\u00E7\u00E3o aplicada (${cbs.reducao.pct ?? 0}%)`}
+              <Row label={`Redução aplicada (${cbs.reducao.pct ?? 0}%)`}
                 value={fmtPct((cbs.aliqPadrao ?? 0) - (cbs.aliq ?? 0))} color="text-emerald-600" />
             )}
             <div className="flex justify-between items-baseline gap-4 pt-1">
-              <span className="text-blue-600">Al\u00EDquota efetiva</span>
+              <span className="text-blue-600">Alíquota efetiva</span>
               <span className="font-bold text-xl text-blue-700 whitespace-nowrap">{fmtPct(cbs.aliq ?? 0)}</span>
             </div>
             <div className="flex justify-between items-baseline gap-4 pt-2 border-t border-blue-100">
-              <span className="text-blue-600 font-medium">D\u00E9bito</span>
+              <span className="text-blue-600 font-medium">Débito</span>
               <span className="font-bold text-lg text-slate-800"><MoneyValue value={cbs.debito ?? 0} size="md" /></span>
             </div>
           </div>
@@ -385,10 +385,10 @@ export function CardCBS({ cbs }: CardCBSProps) {
             <h4 className="text-lg font-bold text-emerald-800">CBS sobre Compras</h4>
           </div>
           <div className="space-y-2">
-            <Row label="Al\u00EDquota nas aquisi\u00E7\u00F5es"
+            <Row label="Alíquota nas aquisições"
               value={cbs.aliqCompras ? fmtPct(cbs.aliqCompras) : fmtPct(cbs.aliqPadrao ?? 0)} />
             <div className="flex justify-between items-baseline gap-4 pt-2 border-t border-emerald-100">
-              <span className="text-emerald-600 font-medium">Cr\u00E9ditos</span>
+              <span className="text-emerald-600 font-medium">Créditos</span>
               <span className="font-bold text-lg text-slate-800"><MoneyValue value={cbs.credito ?? 0} size="md" /></span>
             </div>
           </div>
@@ -397,7 +397,7 @@ export function CardCBS({ cbs }: CardCBSProps) {
 
       <div className="mt-5 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl p-5 border border-cyan-200">
         <div className="flex justify-between items-center">
-          <span className="text-lg font-bold text-cyan-800">CBS L\u00EDquida</span>
+          <span className="text-lg font-bold text-cyan-800">CBS Líquida</span>
           <MoneyValue value={cbs.liquida ?? 0} size="xl" color="text-cyan-800" />
         </div>
       </div>
@@ -412,7 +412,7 @@ interface MemoriaCalculoProps {
   etapas: EtapaMemoria[];
   titulo?: string;
 }
-export function MemoriaCalculo({ etapas, titulo = "Mem\u00F3ria de C\u00E1lculo" }: MemoriaCalculoProps) {
+export function MemoriaCalculo({ etapas, titulo = "Memória de Cálculo" }: MemoriaCalculoProps) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
       <div className="flex items-center gap-2 mb-5">

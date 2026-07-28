@@ -20,32 +20,32 @@ const modos: {
 }[] = [
   {
     id: "SIMPLES_VS_PRESUMIDO",
-    icon: "\u2696\uFE0F",
-    titulo: "Simples Nacional \u00D7 Lucro Presumido",
-    subtitulo: "Compara\u00E7\u00E3o entre regimes atuais",
+    icon: "⚖️",
+    titulo: "Simples Nacional × Lucro Presumido",
+    subtitulo: "Comparação entre regimes atuais",
     descricao:
-      "Compare a carga tribut\u00E1ria estimada do Simples Nacional com o Lucro Presumido, considerando faturamento, atividade, folha, compras e tributos aplic\u00E1veis.",
-    botao: "Iniciar compara\u00E7\u00E3o",
+      "Compare a carga tributária estimada do Simples Nacional com o Lucro Presumido, considerando faturamento, atividade, folha, compras e tributos aplicáveis.",
+    botao: "Iniciar comparação",
   },
   {
     id: "SIMPLES_TRADICIONAL_VS_HIBRIDO",
     icon: "\u{1F500}",
-    titulo: "Simples tradicional \u00D7 Simples h\u00EDbrido",
-    subtitulo: "Avalia\u00E7\u00E3o da op\u00E7\u00E3o da CBS pelo regime regular",
+    titulo: "Simples tradicional × Simples híbrido",
+    subtitulo: "Avaliação da opção da CBS pelo regime regular",
     descricao:
-      "Compare a perman\u00EAncia integral no Simples Nacional com a op\u00E7\u00E3o de apurar a CBS pelo regime regular, fora do DAS.",
-    botao: "Avaliar op\u00E7\u00E3o h\u00EDbrida",
-    selo: { texto: "Reforma Tribut\u00E1ria", cor: "amber" },
+      "Compare a permanência integral no Simples Nacional com a opção de apurar a CBS pelo regime regular, fora do DAS.",
+    botao: "Avaliar opção híbrida",
+    selo: { texto: "Reforma Tributária", cor: "amber" },
   },
   {
     id: "PRESUMIDO_ATUAL_VS_REFORMA",
     icon: "\u{1F4C8}",
-    titulo: "Lucro Presumido atual \u00D7 Reforma Tribut\u00E1ria",
-    subtitulo: "Impacto da substitui\u00E7\u00E3o dos tributos sobre o consumo",
+    titulo: "Lucro Presumido atual × Reforma Tributária",
+    subtitulo: "Impacto da substituição dos tributos sobre o consumo",
     descricao:
-      "Compare a tributa\u00E7\u00E3o atual do Lucro Presumido com o cen\u00E1rio futuro de CBS e IBS, conforme os par\u00E2metros informados.",
+      "Compare a tributação atual do Lucro Presumido com o cenário futuro de CBS e IBS, conforme os parâmetros informados.",
     botao: "Analisar impacto",
-    selo: { texto: "Reforma Tribut\u00E1ria", cor: "amber" },
+    selo: { texto: "Reforma Tributária", cor: "amber" },
   },
 ];
 
