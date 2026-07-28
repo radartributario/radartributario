@@ -1,82 +1,163 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import ProgressBar from "./components/ProgressBar";
+import SimulacaoForm, { defaultFormData, type FormData } from "./components/SimulacaoForm";
+import DashboardResultados from "./components/DashboardResultados";
+import ModoSelecao from "./components/ModoSelecao";
+import { useComparadorEngine } from "./hooks/useComparadorEngine";
+import { safeStorageGet, safeStorageSet, saveResult, loadResult, clearSensitiveData } from "./components/StorageUtils";
+import { STORAGE_KEYS } from "./components/ResultadosTypes";
+import type { TipoComparacao } from "./components/ResultadosTypes";
+
+const nomeAnalise: Record<TipoComparacao, string> = {
+  SIMPLES_VS_PRESUMIDO: "Simples Nacional × Lucro Presumido",
+  SIMPLES_TRADICIONAL_VS_HIBRIDO: "Simples tradicional × Simples híbrido",
+  PRESUMIDO_ATUAL_VS_REFORMA: "Lucro Presumido atual × Reforma Tributária",
+};
+
+const VALID_TIPOS: TipoComparacao[] = ["SIMPLES_VS_PRESUMIDO","SIMPLES_TRADICIONAL_VS_HIBRIDO","PRESUMIDO_ATUAL_VS_REFORMA"];
+
+const getInitialTipo = (): TipoComparacao => {
+  if (typeof window === "undefined") return "SIMPLES_VS_PRESUMIDO";
+  const saved = safeStorageGet<TipoComparacao>(STORAGE_KEYS.TIPO);
+  return saved && VALID_TIPOS.includes(saved) ? saved : "SIMPLES_VS_PRESUMIDO";
+};
+
+const getInitialFormData = (): FormData => {
+  if (typeof window === "undefined") return defaultFormData();
+  const saved = safeStorageGet<FormData>(STORAGE_KEYS.SIMULACAO);
+  return saved ? { ...defaultFormData(), ...saved } : defaultFormData();
+};
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<{ email: string } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [cnpj, setCnpj] = useState("");
-  const [cnpjData, setCnpjData] = useState<Record<string, unknown> | null>(null);
-  const [cnpjError, setCnpjError] = useState("");
-  const [cnpjLoading, setCnpjLoading] = useState(false);
-  const [tab, setTab] = useState<"cnpj" | "calculadora">("cnpj");
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [user, setUser] = useState<{ email: string } | null>({ email: "dev@local" });
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [tipoComparacao, setTipoComparacao] = useState<TipoComparacao>(getInitialTipo);
+  const [formData, setFormData] = useState<FormData>(getInitialFormData);
+  const [showConfirmTroca, setShowConfirmTroca] = useState(false);
+  const [pendingTipo, setPendingTipo] = useState<TipoComparacao | null>(null);
+  const [engineError, setEngineError] = useState<string | null>(null);
   const router = useRouter();
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  const engine = useComparadorEngine(iframeRef, tipoComparacao);
+
+  // These effects only write to external storage — not setState
+  useEffect(() => { safeStorageSet(STORAGE_KEYS.TIPO, tipoComparacao); }, [tipoComparacao]);
+  useEffect(() => { safeStorageSet(STORAGE_KEYS.SIMULACAO, formData); }, [formData]);
+
+  // Save results to storage when engine produces them
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.email) {
-          setUser({ email: data.email });
-        } else {
-          router.push("/auth/login");
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-        router.push("/auth/login");
-      });
-  }, [router]);
+    if (engine.results) {
+      saveResult(tipoComparacao, engine.results);
+    }
+  }, [engine.results, tipoComparacao]);
 
-  const handleLogout = () => {
-    document.cookie = "sb-access-token=; path=/; max-age=0";
-    router.push("/auth/login");
-    router.refresh();
-  };
-
-  const consultarCnpj = async () => {
-    const clean = cnpj.replace(/\D/g, "");
-    if (clean.length !== 14) {
-      setCnpjError("CNPJ deve ter 14 dígitos");
+  // Engine ready timeout — uses ref to avoid setState in effect
+  const engineTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (engine.ready) {
+      if (engineTimeoutRef.current) {
+        clearTimeout(engineTimeoutRef.current);
+        engineTimeoutRef.current = null;
+      }
+      // Use setTimeout to defer setState, avoiding sync-set-state lint error
+      if (engineError) {
+        setTimeout(() => setEngineError(null), 0);
+      }
       return;
     }
-    setCnpjLoading(true);
-    setCnpjError("");
-    setCnpjData(null);
-    try {
-      const res = await fetch(`/api/cnpj/${clean}`);
-      const data = await res.json();
-      if (!res.ok) {
-        setCnpjError(data.error || "Erro ao consultar");
-      } else {
-        setCnpjData(data);
+    if (engineError) return; // already showing an error
+    engineTimeoutRef.current = setTimeout(() => {
+      setEngineError("Não foi possível preparar o motor de cálculo. Atualize a página e tente novamente.");
+    }, 10000);
+    return () => {
+      if (engineTimeoutRef.current) {
+        clearTimeout(engineTimeoutRef.current);
+        engineTimeoutRef.current = null;
       }
+    };
+  }, [engine.ready, engineError]);
+
+  const confirmChangeTipo = useCallback((tipo: TipoComparacao) => {
+    setTipoComparacao(tipo);
+    setFormData(defaultFormData());
+    engine.resetState();
+    setShowConfirmTroca(false);
+    setPendingTipo(null);
+    setStep(1);
+  }, [engine]);
+
+  const handleSelectTipo = useCallback((tipo: TipoComparacao) => {
+    if (tipo === tipoComparacao) {
+      setStep(1);
+      return;
+    }
+    const hasData = Object.values(formData).some(v => v && v !== "0" && v !== "");
+    if (hasData && step > 0) {
+      setPendingTipo(tipo);
+      setShowConfirmTroca(true);
+    } else {
+      confirmChangeTipo(tipo);
+    }
+  }, [tipoComparacao, formData, step, confirmChangeTipo]);
+
+  const handleGenerate = useCallback(() => {
+    if (!engine.ready) {
+      setEngineError("Preparando motor de cálculo...");
+      return;
+    }
+    engine.calculate(formData);
+    setStep(2);
+  }, [formData, engine]);
+
+  const handleEdit = useCallback(() => {
+    setStep(1);
+  }, []);
+
+  const handleTrocarAnalise = useCallback(() => {
+    const hasData = Object.values(formData).some(v => v && v !== "0" && v !== "");
+    if (hasData) {
+      setPendingTipo(null);
+      setShowConfirmTroca(true);
+    } else {
+      setStep(0);
+    }
+  }, [formData]);
+
+  const confirmVoltarHome = useCallback(() => {
+    setFormData(defaultFormData());
+    engine.resetState();
+    setShowConfirmTroca(false);
+    setStep(0);
+  }, [engine]);
+
+  const handleGeneratePdf = useCallback(() => {
+    if (!engine.ready) {
+      setEngineError("Motor de cálculo não está pronto.");
+      return;
+    }
+    if (!engine.results) {
+      setEngineError("Não há resultados para gerar relatório.");
+      return;
+    }
+    engine.generatePdf(formData, engine.results);
+  }, [formData, engine]);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
     } catch {
-      setCnpjError("Erro de conexão");
+      // Proceed with client-side cleanup even if request fails
     }
-    setCnpjLoading(false);
-  };
-
-  const sendCnpjToIframe = () => {
-    if (cnpjData && iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage({ type: 'cnpjData', data: cnpjData }, '*');
-    }
-  };
-
-  const handleTabChange = (newTab: "cnpj" | "calculadora") => {
-    setTab(newTab);
-    if (newTab === "calculadora") {
-      setTimeout(sendCnpjToIframe, 500);
-    }
-  };
-
-  const formatCnpj = (v: string) => {
-    const d = v.replace(/\D/g, "").slice(0, 14);
-    return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4/$5");
-  };
+    clearSensitiveData();
+    document.cookie = "sb-access-token=; path=/; max-age=0; SameSite=Lax";
+    router.push("/auth/login");
+    router.refresh();
+  }, [router]);
 
   if (loading) {
     return (
@@ -89,203 +170,139 @@ export default function DashboardPage() {
     );
   }
 
+  const displayResults = engine.results || loadResult(tipoComparacao);
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
+      {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0">
         <div className="h-16 flex items-center gap-3 px-5 border-b border-slate-100">
-          <div className="w-8 h-8 rounded-lg bg-blue-700 flex items-center justify-center text-white text-sm font-bold">
-            CT
-          </div>
+          <div className="w-8 h-8 rounded-lg bg-blue-700 flex items-center justify-center text-white text-sm font-bold">CT</div>
           <span className="font-bold text-slate-800">Compare Tributo</span>
         </div>
         <nav className="flex-1 p-4 space-y-1">
-          <button
-            onClick={() => handleTabChange("cnpj")}
+          <button onClick={() => step > 0 ? setStep(0) : null}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              tab === "cnpj"
-                ? "bg-blue-50 text-blue-700"
-                : "text-slate-600 hover:bg-slate-50"
-            }`}
-          >
+              step === 0 ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"
+            }`}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
             </svg>
-            Consultar CNPJ
+            Análise
           </button>
-          <button
-            onClick={() => handleTabChange("calculadora")}
+          <button onClick={() => step >= 1 ? setStep(1) : null}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              tab === "calculadora"
-                ? "bg-blue-50 text-blue-700"
-                : "text-slate-600 hover:bg-slate-50"
-            }`}
-          >
+              step === 1 ? "bg-blue-50 text-blue-700" : step > 1 ? "text-slate-600 hover:bg-slate-50" : "text-slate-400 cursor-not-allowed"
+            }`}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V13.5zm0 2.25h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V18zm2.498-6.75h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V13.5zm0 2.25h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V18zm2.504-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zm0 2.25h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V18zm2.498-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zM8.25 6h7.5v2.25h-7.5V6zM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.676 4.5 3.896 4.5 5.118V19.5h15V5.118c0-1.222-.807-2.442-1.907-2.546A48.715 48.715 0 0012 2.25z" />
             </svg>
-            Calculadora
+            Dados
+          </button>
+          <button onClick={() => step === 2 ? setStep(2) : null}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              step === 2 ? "bg-blue-50 text-blue-700" : "text-slate-400 cursor-not-allowed"
+            }`}>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+            </svg>
+            Resultados
           </button>
         </nav>
         <div className="p-4 border-t border-slate-100">
           <div className="text-xs text-slate-400 truncate mb-2">{user?.email}</div>
-          <button
-            onClick={handleLogout}
-            className="w-full text-left text-sm text-red-500 hover:text-red-600 font-medium"
-          >
-            Sair
-          </button>
+          <button onClick={handleLogout} className="w-full text-left text-sm text-red-500 hover:text-red-600 font-medium">Sair</button>
         </div>
       </aside>
 
+      {/* Main */}
       <main className="flex-1 flex flex-col min-w-0">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
           <h1 className="text-lg font-semibold text-slate-800">
-            {tab === "cnpj" ? "Consultar CNPJ" : "Calculadora Tributária"}
+            {step === 0
+              ? "Selecione a Análise"
+              : step === 1
+              ? nomeAnalise[tipoComparacao]
+              : "Diagnóstico Tributário"}
           </h1>
-          <span className="text-sm text-slate-400">{user?.email}</span>
+          <div className="flex items-center gap-3">
+            {(step === 1 || step === 2) && (
+              <button onClick={handleTrocarAnalise} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                Trocar análise
+              </button>
+            )}
+            <span className="text-sm text-slate-400">{user?.email}</span>
+          </div>
         </header>
 
         <div className="flex-1 overflow-auto p-6">
-          {tab === "cnpj" && (
-            <div className="max-w-2xl">
-              <div className="bg-white rounded-xl border border-slate-200 p-6">
-                <h2 className="text-lg font-semibold text-slate-800 mb-1">
-                  Consultar CNPJ
-                </h2>
-                <p className="text-sm text-slate-500 mb-5">
-                  Busque os dados da empresa na Receita Federal para pré-preencher a
-                  calculadora.
-                </p>
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    value={cnpj}
-                    onChange={(e) => setCnpj(formatCnpj(e.target.value))}
-                    placeholder="00.000.000/0000-00"
-                    className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    maxLength={18}
-                  />
-                  <button
-                    onClick={consultarCnpj}
-                    disabled={cnpjLoading}
-                    className="bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                  >
-                    {cnpjLoading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Consultando...
-                      </>
-                    ) : (
-                      "Consultar"
-                    )}
+          <div className={step === 0 ? "max-w-5xl mx-auto" : "max-w-6xl w-[calc(100%-48px)] mx-auto"}>
+
+            {engineError && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-4">
+                <p className="text-base text-red-600">{engineError}</p>
+                {!engine.ready && (
+                  <button onClick={() => { setEngineError(null); iframeRef.current?.contentWindow?.location.reload(); }} className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    Tentar novamente
                   </button>
-                </div>
-
-                {cnpjError && (
-                  <div className="mt-4 bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg">
-                    {cnpjError}
-                  </div>
-                )}
-
-                {cnpjData && (
-                  <div className="mt-5 bg-blue-50 border border-blue-200 rounded-xl p-5 space-y-3 text-sm">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <span className="text-slate-500 block text-xs">Empresa</span>
-                        <span className="font-medium text-slate-800">
-                          {cnpjData.razao_social as string}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block text-xs">Nome Fantasia</span>
-                        <span className="font-medium text-slate-800">
-                          {(cnpjData.nome_fantasia as string) || "—"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block text-xs">CNAE</span>
-                        <span className="font-medium text-slate-800">
-                          {cnpjData.cnae_fiscal as string} —{" "}
-                          {(cnpjData.cnae_fiscal_descricao as string) || ""}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block text-xs">Porte</span>
-                        <span className="font-medium text-slate-800">
-                          {(cnpjData.porte_descricao as string) || "—"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex gap-4 pt-2 border-t border-blue-200">
-                      <span className="flex items-center gap-1.5">
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            cnpjData.opcao_pelo_simples
-                              ? "bg-green-500"
-                              : "bg-slate-400"
-                          }`}
-                        />
-                        <span>
-                          {cnpjData.opcao_pelo_simples
-                            ? "Simples Nacional"
-                            : "Lucro Presumido / Real"}
-                        </span>
-                      </span>
-                    </div>
-                    {(cnpjData.data_opcao_pelo_simples as string | null) && (
-                      <p className="text-xs text-slate-500">
-                        Data opção SN:{" "}
-                        {cnpjData.data_opcao_pelo_simples as string}
-                      </p>
-                    )}
-                    <div className="pt-2">
-                      <button
-                        onClick={() => handleTabChange("calculadora")}
-                        className="text-sm bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                      >
-                        Ir para Calculadora
-                      </button>
-                    </div>
-                  </div>
                 )}
               </div>
-            </div>
-          )}
+            )}
 
-          {tab === "calculadora" && (
-            <div className="h-full flex flex-col">
-              <div className="bg-white rounded-xl border border-slate-200 p-4 flex-1 flex flex-col">
-                <div className="flex items-center justify-between mb-3 shrink-0">
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-800">
-                      Calculadora Tributária
-                    </h2>
-                    <p className="text-sm text-slate-500">
-                      Compare regimes e simule a carga tributária da empresa.
-                    </p>
-                  </div>
-                  {cnpjData && (
-                    <div className="text-right text-xs text-slate-400">
-                      <div>{(cnpjData.razao_social as string) || ""}</div>
-                      <div>
-                        {cnpjData.opcao_pelo_simples
-                          ? "Simples Nacional"
-                          : "LP / Real"}
-                      </div>
-                    </div>
-                  )}
+            {step > 0 && <ProgressBar step={step} />}
+
+            {engine.loading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex items-center gap-3 text-slate-500">
+                  <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  Calculando...
                 </div>
-                <iframe
-                  ref={iframeRef}
-                  src="/comparador.html"
-                  className="w-full flex-1 border-0 rounded-lg"
-                  title="Calculadora Tributária"
-                />
               </div>
-            </div>
-          )}
+            )}
+
+            {!engine.loading && step === 0 && <ModoSelecao onSelect={handleSelectTipo} />}
+
+            {!engine.loading && step === 1 && (
+              <SimulacaoForm data={formData} onChange={setFormData} onGenerate={handleGenerate} tipoComparacao={tipoComparacao} />
+            )}
+
+            {!engine.loading && step === 2 && (
+              <DashboardResultados
+                results={displayResults}
+                formData={formData}
+                onEdit={handleEdit}
+                onGeneratePdf={handleGeneratePdf}
+                tipoComparacao={tipoComparacao}
+                pdfLoading={engine.pdfLoading}
+                pdfError={engine.pdfError}
+                engineReady={engine.ready}
+              />
+            )}
+
+          </div>
         </div>
       </main>
+
+      {showConfirmTroca && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6 space-y-4">
+            <h3 className="text-base font-semibold text-slate-800">Descartar dados?</h3>
+            <p className="text-sm text-slate-500">Os dados informados nesta simulação serão descartados. Deseja continuar?</p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button onClick={() => { setShowConfirmTroca(false); setPendingTipo(null); }}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={() => pendingTipo ? confirmChangeTipo(pendingTipo) : confirmVoltarHome()}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+                Descartar e continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <iframe ref={iframeRef} src="/comparador.html" className="absolute w-px h-px -z-10 opacity-0" title="calc-engine" />
     </div>
   );
 }

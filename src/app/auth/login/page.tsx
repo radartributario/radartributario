@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -31,7 +30,7 @@ export default function LoginPage() {
         return;
       }
 
-      document.cookie = `sb-access-token=${data.access_token}; path=/; max-age=3600; SameSite=Lax`;
+      // Cookies are set by the server via HttpOnly — no manual cookie manipulation needed
       router.push("/dashboard");
       router.refresh();
     } catch {
@@ -68,9 +67,8 @@ export default function LoginPage() {
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2.5 rounded-lg transition-colors">
             {loading ? "Entrando..." : "Entrar"}
           </button>
-          <p className="text-center text-sm text-slate-500">
-            Não tem conta?{" "}
-            <Link href="/auth/register" className="text-blue-600 hover:underline font-medium">Cadastre-se</Link>
+          <p className="text-center text-sm text-slate-400">
+            Plataforma exclusiva para clientes
           </p>
         </form>
       </div>

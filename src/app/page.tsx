@@ -11,20 +11,12 @@ export default function Home() {
             </div>
             <span className="font-bold text-slate-800 text-lg">Compare Tributo</span>
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/auth/login"
-              className="text-sm text-slate-600 hover:text-slate-800 font-medium px-4 py-2"
-            >
-              Entrar
-            </Link>
-            <Link
-              href="/auth/register"
-              className="text-sm bg-blue-700 hover:bg-blue-800 text-white px-5 py-2 rounded-lg font-medium transition-colors"
-            >
-              Cadastrar Gratuito
-            </Link>
-          </div>
+          <Link
+            href="/auth/login"
+            className="text-sm bg-blue-700 hover:bg-blue-800 text-white px-5 py-2 rounded-lg font-medium transition-colors"
+          >
+            Entrar
+          </Link>
         </div>
       </header>
 
@@ -33,7 +25,7 @@ export default function Home() {
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-full px-4 py-1.5 text-sm text-blue-700 font-medium mb-8">
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-              Plataforma gratuita para contadores e empresas
+              Plataforma profissional para contadores e empresas
             </div>
             <h1 className="text-5xl font-bold text-slate-900 leading-tight mb-6">
               Sua empresa está no{" "}
@@ -46,16 +38,10 @@ export default function Home() {
             </p>
             <div className="flex items-center justify-center gap-4">
               <Link
-                href="/auth/register"
+                href="/auth/login"
                 className="bg-blue-700 hover:bg-blue-800 text-white px-8 py-3.5 rounded-xl text-lg font-semibold transition-colors shadow-lg shadow-blue-200"
               >
-                Começar Agora
-              </Link>
-              <Link
-                href="/auth/login"
-                className="bg-white hover:bg-slate-50 text-slate-700 px-8 py-3.5 rounded-xl text-lg font-semibold border border-slate-300 transition-colors"
-              >
-                Já tenho conta
+                Entrar na Plataforma
               </Link>
             </div>
           </div>
@@ -128,8 +114,8 @@ export default function Home() {
                   desc: "Cálculo de anexos, faixas, Fator R, aliquotas efetivas e mais.",
                 },
                 {
-                  title: "100% Gratuito",
-                  desc: "Sem custos ocultos. Ideal para contadores e consultores.",
+                  title: "Resultado Imediato",
+                  desc: "Diagnóstico completo em segundos com relatório profissional em PDF.",
                 },
               ].map((item) => (
                 <div

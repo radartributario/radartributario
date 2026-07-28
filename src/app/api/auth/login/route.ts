@@ -39,7 +39,31 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    return NextResponse.json(data);
+
+    // Set HttpOnly cookies instead of returning tokens to client JS
+    const response = NextResponse.json({ success: true });
+
+    if (data.access_token) {
+      response.cookies.set("sb-access-token", data.access_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 3600,
+      });
+    }
+
+    if (data.refresh_token) {
+      response.cookies.set("sb-refresh-token", data.refresh_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 86400 * 30,
+      });
+    }
+
+    return response;
   } catch (e: unknown) {
     return NextResponse.json(
       { error: `Erro ao conectar: ${e instanceof Error ? e.message : "desconhecido"}` },

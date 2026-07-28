@@ -5,7 +5,8 @@ window.autoClassifyCnae = function(cnae, fatorR) {
   const cod = cnae.codigo || '';
   const classe = cod.split('/')[0];
   const desc = (cnae.descricao || '').toLowerCase();
-  const numClasse = parseInt(classe.replace(/\D/g,'')) || 0;
+  const digits = classe.replace(/\D/g,'');
+  const div = parseInt(digits.substring(0,2)) || 0;
 
   if (window.CNAE_ANEXO_IV && window.CNAE_ANEXO_IV.has(classe)) {
     return { anexo_simples: 'Anexo IV', categoria_tributaria: 'construcao' };
@@ -17,31 +18,31 @@ window.autoClassifyCnae = function(cnae, fatorR) {
     const anexo = (fatorR || 0) >= 0.28 ? 'Anexo III' : 'Anexo V';
     return { anexo_simples: anexo, categoria_tributaria: 'servico' };
   }
-  if (numClasse >= 10 && numClasse <= 33) {
+  if (div >= 10 && div <= 33) {
     return { anexo_simples: 'Anexo II', categoria_tributaria: 'industria' };
   }
-  if (numClasse >= 45 && numClasse <= 49) {
+  if (div >= 45 && div <= 47) {
     return { anexo_simples: 'Anexo I', categoria_tributaria: 'comercio' };
   }
-  if (numClasse >= 55 && numClasse <= 56) {
+  if (div >= 55 && div <= 56) {
     return { anexo_simples: 'Anexo III', categoria_tributaria: 'servico' };
   }
-  if (numClasse >= 61 && numClasse <= 63) {
+  if (div >= 61 && div <= 63) {
     return { anexo_simples: 'Anexo III', categoria_tributaria: 'servico' };
   }
-  if ((numClasse >= 64 && numClasse <= 66) || (numClasse >= 68 && numClasse <= 82)) {
+  if ((div >= 64 && div <= 66) || (div >= 68 && div <= 82)) {
     return { anexo_simples: 'Anexo V', categoria_tributaria: 'servico' };
   }
-  if (numClasse >= 85 && numClasse <= 88) {
+  if (div >= 85 && div <= 88) {
     return { anexo_simples: 'Anexo III', categoria_tributaria: 'servico' };
   }
-  if (numClasse >= 86 && numClasse <= 87) {
+  if (div >= 86 && div <= 87) {
     return { anexo_simples: 'Anexo III', categoria_tributaria: 'servico' };
   }
-  if (numClasse >= 90 && numClasse <= 93) {
+  if (div >= 90 && div <= 93) {
     return { anexo_simples: 'Anexo III', categoria_tributaria: 'servico' };
   }
-  if (numClasse >= 94 && numClasse <= 96) {
+  if (div >= 94 && div <= 96) {
     return { anexo_simples: 'Anexo III', categoria_tributaria: 'servico' };
   }
 
@@ -62,27 +63,27 @@ window.autoClassifyCnae = function(cnae, fatorR) {
 // CBS Reforma: classifica tratamento por CNAE
 window.getCbsTreatment = function(codigo) {
   const classe = (codigo || '').split('/')[0];
-  const num = parseInt(classe.replace(/\D/g,'')) || 0;
+  const digits = classe.replace(/\D/g,'');
+  if (!digits) return { tipo: 'padrao', desc: 'Alíq. Padrão (8,8%)' };
+
+  // Extrai a divisão CNAE (2 primeiros dígitos) para classificação por setor
+  const div = parseInt(digits.substring(0,2), 10);
 
   // Alíquota zero (cesta básica, exportações, etc)
-  if (num >= 111 && num <= 119) return { tipo: 'zero', desc: 'Alíquota Zero (Cesta Básica)' };
-  if (num >= 11 && num <= 15) return { tipo: 'zero', desc: 'Alíquota Zero - Agropecuária' };
+  if (digits.startsWith('011') || digits.startsWith('111')) return { tipo: 'zero', desc: 'Alíquota Zero (Cesta Básica)' };
+  if (div >= 1 && div <= 3) return { tipo: 'zero', desc: 'Alíquota Zero - Agropecuária' };
 
-  // Alíquota reduzida (60% da padrão = ~5,28%) - setores com redução na CBS (LC 214/2025, arts. 8º e 9º)
-  if (num >= 85 && num <= 88) return { tipo: 'reduzida', fator: 0.6, desc: 'Alíq. Reduzida 60% - Educação e Saúde' };
-  if (num >= 49 && num <= 52) return { tipo: 'reduzida', fator: 0.6, desc: 'Alíq. Reduzida 60% - Transporte' };
-  if ((classe.startsWith('86')||classe.startsWith('87')||classe.startsWith('8610')||classe.startsWith('8621')||classe.startsWith('8622')||classe.startsWith('8630')||classe.startsWith('8640')||classe.startsWith('8650')||classe.startsWith('8660')||classe.startsWith('8690'))) return { tipo: 'reduzida', fator: 0.6, desc: 'Alíq. Reduzida 60% - Serviços de Saúde' };
-  if (num >= 58 && num <= 60) return { tipo: 'reduzida', fator: 0.6, desc: 'Alíq. Reduzida 60% - Comunicação' };
-  if (num >= 64 && num <= 66) return { tipo: 'reduzida', fator: 0.6, desc: 'Alíq. Reduzida 60% - Financeiro' };
-  // Serviços profissionais, científicos e técnicos (LC 214/2025, art. 9º)
-  if (num >= 69 && num <= 75) return { tipo: 'reduzida', fator: 0.6, desc: 'Alíq. Reduzida 60% - Serviços Profissionais' };
-  // Serviços administrativos e suporte (LC 214/2025, art. 9º)
-  if (num >= 77 && num <= 82) return { tipo: 'reduzida', fator: 0.6, desc: 'Alíq. Reduzida 60% - Serviços Administrativos' };
-  // Artes, cultura, esporte (LC 214/2025, art. 9º)
-  if (num >= 90 && num <= 93) return { tipo: 'reduzida', fator: 0.6, desc: 'Alíq. Reduzida 60% - Artes e Cultura' };
+  // Alíquota reduzida (60% da padrão = ~5,28%) - setores com redução na CBS (LC 214/2025 c/c LC 227/2026)
+  if (div >= 85 && div <= 88) return { tipo: 'reduzida', fator: 0.6, desc: 'Alíq. Reduzida 60% - Educação e Saúde', lei: 'Art. 128, I-II' };
+  if (div >= 58 && div <= 60) return { tipo: 'reduzida', fator: 0.6, desc: 'Alíq. Reduzida 60% - Comunicação e Cultura', lei: 'Art. 128, X' };
+  if (div === 80) return { tipo: 'reduzida', fator: 0.6, desc: 'Alíq. Reduzida 60% - Segurança', lei: 'Art. 128, XIII' };
+  if (div >= 90 && div <= 93) return { tipo: 'reduzida', fator: 0.6, desc: 'Alíq. Reduzida 60% - Artes, Cultura e Esporte', lei: 'Art. 128, X e XII' };
+
+  // Alíquota reduzida (30% da padrão = ~6,16%) - profissionais liberais (LC 214/2025, Art. 127)
+  if (div >= 69 && div <= 75) return { tipo: 'reduzida', fator: 0.7, desc: 'Alíq. Reduzida 30% - Profissionais Liberais', lei: 'Art. 127' };
 
   // Alíquota padrão
-  return { tipo: 'padrao', desc: 'Alíq. Padrão (8,8%)' };
+  return { tipo: 'padrao', desc: 'Alíq. Padrão (8,8%)', lei: 'Arts. 14-16' };
 };
 
 // Popula CNAE_TAX_DATA com classificação automática

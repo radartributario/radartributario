@@ -42,3 +42,17 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# auditoria
+.audit/
+HOMOLOGACAO_COMPLETA.zip
+HOMOLOGACAO/
+HOMOLOGACAO_TRIBUTARIA_FINAL.md
+PROJETO_PARA_AUDITORIA.zip
+
+# playwright
+test-results/
+playwright-report/
+
+# scripts
+scripts/
