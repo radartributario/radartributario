@@ -74,7 +74,7 @@ const mockWindow = {
 const fn = new Function(
   "window", "document", "console",
   codeToEval +
-    "; return { getIbsAliq2027, getSNParams, getAnexoSN, getSNParcelaIcmsIss, getSNFaixa, calcularSN, calcularLP, calcularCBS, calcularIBS, calcularImpacto, calcularComparacaoSimplesPresumido, calcularComparacaoSimplesHibrido, calcularComparacaoPresumidoReforma, checkEligibility, getBeneficioCNAE, getCbsAliqEfetiva, getCbsReducao, getReparticao2027, calcularSublimite, getCnaeCategoria, BENEFICIOS_CBS_IBS, CNAE_FATOR_R, CNAE_ANEXO_IV };"
+    "; return { getIbsAliq2027, getSNParams, getAnexoSN, getSNParcelaIcmsIss, getSNFaixa, calcularSN, calcularLP, calcularCBS, calcularIBS, calcularImpacto, calcularResultadoHibridoCentral, calcularSimplesHibrido, calcularComparacaoSimplesPresumido, calcularComparacaoSimplesHibrido, calcularComparacaoPresumidoReforma, checkEligibility, getBeneficioCNAE, getCbsAliqEfetiva, getCbsReducao, getReparticao2027, calcularSublimite, getCnaeCategoria, BENEFICIOS_CBS_IBS, CNAE_FATOR_R, CNAE_ANEXO_IV };"
 );
 
 const engine = fn(mockWindow, mockDoc, console);
@@ -502,9 +502,11 @@ describe("Homologação — Cenário 6: Módulo Híbrido 2027", () => {
     assert.ok(Math.abs(result.CBS.debito - cbsDebito) < 2);
     assert.ok(Math.abs(result.CBS.credito - cbsCredito) < 2);
     assert.ok(Math.abs(result.CBS.liquida - cbsLiquida) < 2);
+    assert.strictEqual(result.IBS.aliquota, 0, "IBS alíquota = 0 por premissa funcional do Simples Híbrido 2027");
     assert.strictEqual(result.IBS.debito, 0, "IBS débito = 0");
     assert.strictEqual(result.IBS.credito, 0, "IBS crédito = 0");
     assert.strictEqual(result.IBS.liquido, 0, "IBS líquido = 0");
+    assert.strictEqual(result.simplesHibrido.parcelaIbsRetiradaDoDas, 0, "IBS não é retirado do DAS no Simples Híbrido 2027");
     assert.strictEqual(result.statusCalculo, "OK", "Status OK");
   });
 });
@@ -834,19 +836,34 @@ describe("Homologação — Cenário 13: getSNParcelaIcmsIss", () => {
 });
 
 // =============================================================================
-// CENÁRIO 14: getReparticao2027 — IBS = 0 em 2027
+// CENÁRIO 14: getReparticao2027 — tabela pode ter IBS, mas o motor híbrido 2027 ignora IBS
 // =============================================================================
 describe("Homologação — Cenário 14: getReparticao2027", () => {
   for (const anexo of ["Anexo I", "Anexo III"]) {
     for (let faixa = 0; faixa < 6; faixa++) {
-      it(`${anexo} faixa ${faixa+1}: repartição soma 1,0 e IBS=0`, () => {
+      it(`${anexo} faixa ${faixa+1}: repartição soma 1,0`, () => {
         const rep = engine.getReparticao2027(anexo, faixa);
         const soma = rep.irpj + rep.csll + rep.cbs + rep.cpp + rep.iss + rep.ibs;
         assert.ok(Math.abs(soma - 1) < 0.001, `Soma = ${soma.toFixed(4)}, deve ser ~1,0`);
-        assert.strictEqual(rep.ibs, 0, `IBS = 0 em 2027`);
       });
     }
   }
+
+  it("Simples Híbrido 2027 não retira IBS do DAS mesmo quando a repartição tem IBS", () => {
+    const result = engine.calcularComparacaoSimplesHibrido(fd({
+      cnae: "6201-1/01",
+      tipoAtivLP: "servicos",
+      comprasInput: "200.000,00",
+      optOutPct: "100",
+    }));
+    if (result.error) throw new Error(result.error);
+
+    assert.ok(result.simplesHibrido.reparticao.ibs > 0, "Tabela de repartição mantém IBS");
+    assert.strictEqual(result.simplesHibrido.parcelaIbsRetiradaDoDas, 0, "Motor híbrido 2027 ignora IBS por premissa funcional");
+    assert.strictEqual(result.IBS.debito, 0);
+    assert.strictEqual(result.IBS.credito, 0);
+    assert.strictEqual(result.IBS.liquido, 0);
+  });
 });
 
 // =============================================================================
@@ -1251,5 +1268,77 @@ describe("S21 — Fator R (cenários de fronteira)", () => {
     const dasEsperado = 1_200_000 * 0.16 - 35640;
     assert.ok(Math.abs(result.sn.dasAnual - dasEsperado) < 0.02,
       `DAS para Anexo III: esperado ${dasEsperado.toFixed(2)}, obtido ${result.sn.dasAnual.toFixed(2)}`);
+  });
+});
+
+// =============================================================================
+// S22 — Consolidação técnica do motor híbrido
+// =============================================================================
+describe("S22 — Consolidação técnica do motor híbrido", () => {
+
+  it("22a. Wrapper legado calcularSimplesHibrido preserva contrato e IBS zero", () => {
+    const snParams = { dasAnual: 144000, anexo: "Anexo I", rbt12: 1200000 };
+    const cbsParams = { cbsLiquida: 88000 };
+    const result = engine.calcularSimplesHibrido(snParams, cbsParams, 1, 6000);
+
+    assert.strictEqual(result.dasIntegral, 144000);
+    assert.strictEqual(result.parcelaIbsRetiradaDoDas, 0);
+    assert.strictEqual(result.ibsLiquido, 0);
+    assert.ok(typeof result.parcelaCbsRetiradaDoDas === "number");
+    assert.ok(typeof result.dasReduzido === "number");
+    assert.ok(typeof result.total === "number");
+    assert.ok(typeof result.media === "number");
+    assert.ok(typeof result.aliquota === "number");
+  });
+
+  it("22b. Wrapper legado e motor central produzem o mesmo resultado no contrato legado", () => {
+    const snParams = { dasAnual: 144000, anexo: "Anexo I", rbt12: 1200000 };
+    const cbsParams = { cbsLiquida: 88000 };
+    const legado = engine.calcularSimplesHibrido(snParams, cbsParams, 1, 6000);
+    const central = engine.calcularResultadoHibridoCentral({
+      dasIntegral: snParams.dasAnual,
+      rbt12: snParams.rbt12,
+      optOutPct: 1,
+      anexo: snParams.anexo,
+      cbsLiquida: cbsParams.cbsLiquida,
+      ibsLiquido: 0,
+      parcelaIbsRetiradaDoDas: 0,
+      encargosFora: 6000,
+    });
+
+    assert.deepStrictEqual(legado, central);
+  });
+
+  it("22c. Caminho oficial usa o mesmo bloco central com IBS desligado no Simples Híbrido 2027", () => {
+    const oficial = engine.calcularComparacaoSimplesHibrido(fd({
+      cnae: "4711-1/00",
+      tipoAtivLP: "comercio",
+      comprasInput: "1.200.000,00",
+      optOutPct: "100",
+      aliqCbsFora: "8.8",
+      aliqCbsCompras: "8.8",
+    }));
+    if (oficial.error) throw new Error(oficial.error);
+
+    const sh = oficial.simplesHibrido;
+    const central = engine.calcularResultadoHibridoCentral({
+      dasIntegral: sh.dasIntegral,
+      rbt12: oficial.simplesTradicional.rbt12,
+      optOutPct: 1,
+      reparticao: sh.reparticao,
+      cbsLiquida: sh.cbsLiquida,
+      ibsLiquido: sh.ibsLiquido,
+      aplicarIbsRegularNoHibrido2027: false,
+      encargosFora: sh.encargos,
+    });
+
+    assert.strictEqual(sh.parcelaCbsRetiradaDoDas, central.parcelaCbsRetiradaDoDas);
+    assert.strictEqual(sh.parcelaIbsRetiradaDoDas, central.parcelaIbsRetiradaDoDas);
+    assert.strictEqual(sh.dasReduzido, central.dasReduzido);
+    assert.strictEqual(sh.cbsLiquida, central.cbsLiquida);
+    assert.strictEqual(sh.ibsLiquido, central.ibsLiquido);
+    assert.strictEqual(sh.total, central.total);
+    assert.strictEqual(sh.media, central.media);
+    assert.strictEqual(sh.aliquota, central.aliquota);
   });
 });

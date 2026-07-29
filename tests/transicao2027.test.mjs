@@ -119,30 +119,39 @@ describe("Transição 2027 — CBS mantida em 8,80%", () => {
   });
 });
 
-describe("Transição 2027 — Módulo Híbrido", () => {
-  it("IBS = 0 em 2027 (sem cálculo por fora)", () => {
+describe("Transição 2027 — Simples Híbrido (IBS desligado por premissa funcional)", () => {
+  it("Simples Híbrido 2027: IBS = 0 por premissa funcional do simulador", () => {
     const result = engine.calcularComparacaoSimplesHibrido(fd());
     if (result.error) throw new Error(result.error);
+    assert.strictEqual(result.statusCalculo, "OK", "statusCalculo = OK");
+    assert.strictEqual(result.IBS.aliquota, 0, "IBS aliquota = 0");
+    assert.strictEqual(result.IBS.debito, 0, "IBS débito = 0");
+    assert.strictEqual(result.IBS.credito, 0, "IBS crédito = 0");
+    assert.strictEqual(result.IBS.liquido, 0, "IBS líquido = 0");
     assert.strictEqual(result.simplesHibrido.ibsLiquido, 0, "IBS líquido = 0 em 2027");
     assert.strictEqual(result.simplesHibrido.parcelaIbsRetiradaDoDas, 0, "Parcela IBS retirada do DAS = 0");
   });
 
-  it("TESTE 6: total híbrido usa CBS líquida", () => {
+  it("Simples Híbrido 2027: total híbrido usa CBS líquida e não inclui IBS", () => {
     const result = engine.calcularComparacaoSimplesHibrido(fd());
     if (result.error) throw new Error(result.error);
     const hib = result.simplesHibrido;
     assert.ok(hib.total > 0, "Total híbrido > 0");
     assert.ok(hib.cbsLiquida > 0, "CBS líquida > 0");
+    const semIbs = hib.dasReduzido + result.CBS.liquida + hib.encargos;
+    assert.strictEqual(hib.total, semIbs, "Total híbrido = DAS reduzido + CBS líquida + encargos");
   });
 
-  it("TESTE 7: alíquota CBS não é exibida como carga total", () => {
+  it("Simples Híbrido 2027: premissas e CBS.aliqCompras permanecem no contrato", () => {
     const result = engine.calcularComparacaoSimplesHibrido(fd());
     if (result.error) throw new Error(result.error);
     const premissas = result.premissas;
+    assert.ok(premissas, "premissas presentes");
+    assert.strictEqual(result.CBS.aliqCompras, 8.8, "CBS.aliqCompras presente");
     assert.ok(result.simplesHibrido.aliquota !== premissas.aliqCbs, "Alíquota total ≠ alíquota CBS");
   });
 
-  it("DAS híbrido reduzido = DAS integral - CBS retirada", () => {
+  it("Simples Híbrido 2027: DAS reduzido = DAS integral - CBS retirada", () => {
     const result = engine.calcularComparacaoSimplesHibrido(fd());
     if (result.error) throw new Error(result.error);
     const hib = result.simplesHibrido;
@@ -160,16 +169,17 @@ describe("Transição 2027 — Módulo Híbrido", () => {
     assert.ok(mem.total, "Memória total presente");
   });
 
-  it("IBS structure has debito=0, credito=0, liquido=0 em 2027", () => {
+  it("Simples Híbrido 2027: estrutura IBS existe e permanece zerada", () => {
     const result = engine.calcularComparacaoSimplesHibrido(fd());
     if (result.error) throw new Error(result.error);
     assert.ok(result.IBS, "result.IBS deve existir");
+    assert.strictEqual(result.IBS.aliquota, 0, "IBS alíquota = 0");
     assert.strictEqual(result.IBS.debito, 0, "IBS débito = 0");
     assert.strictEqual(result.IBS.credito, 0, "IBS crédito = 0");
     assert.strictEqual(result.IBS.liquido, 0, "IBS líquido = 0");
   });
 
-  it("IBS não altera o total em 2027", () => {
+  it("Simples Híbrido 2027: IBS não altera total, média, alíquota ou impacto", () => {
     const result = engine.calcularComparacaoSimplesHibrido(fd());
     if (result.error) throw new Error(result.error);
     assert.ok(result.IBS, "IBS object existe");
@@ -177,8 +187,10 @@ describe("Transição 2027 — Módulo Híbrido", () => {
     assert.strictEqual(result.statusCalculo, "OK", "statusCalculo = OK (consistência do motor)");
     // Total não é alterado por IBS: dasReduzido + CBS.liquida + encargos
     const semIbs = result.simplesHibrido.dasReduzido + result.CBS.liquida + result.simplesHibrido.encargos;
-    assert.ok(result.simplesHibrido.total >= semIbs - 0.01,
-      "Total ≥ soma dos componentes não-IBS (tribFora ≥ 0 é independente)");
+    assert.strictEqual(result.simplesHibrido.total, semIbs,
+      "Total = soma dos componentes não-IBS");
+    assert.strictEqual(result.simplesHibrido.media, result.simplesHibrido.total / 12);
+    assert.strictEqual(result.simplesHibrido.aliquota, result.simplesHibrido.total / result.simplesTradicional.rbt12 * 100);
   });
 });
 
