@@ -8,6 +8,10 @@ export type FormData = Record<string, string>;
 
 const MAIN_ECONOMIC_FIELDS = ["rbt12Input", "comprasInput", "anoSIM", "salarios", "prolabore"];
 const MAIN_TAX_FIELDS = ["aliquotaISS", "aliquotaICMS", "aliquotaIPI"];
+const AUTO_FIELDS = new Set(["razao", "fantasia", "cnae", "atividade", "municipio", "estado"]);
+
+const FIELD_INPUT_CLASS = "w-full px-3 py-2 rounded-lg border bg-white border-[#B8C7DC] text-[#172033] text-sm shadow-[0_1px_3px_rgba(15,42,86,0.08)] focus:outline-none focus:ring-2 focus:ring-[#2155E5]/40 focus:border-[#2155E5]";
+const AUTO_INPUT_CLASS = "w-full px-3 py-2 rounded-lg border border-[#D5DFEC] bg-[#EEF3FA] text-[#516176] text-sm cursor-default focus:outline-none focus:ring-2 focus:ring-[#2155E5]/30 focus:border-[#2155E5]";
 
 interface Props {
   data: FormData;
@@ -210,10 +214,11 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
 
   const renderField = (f: FieldDef) => {
     const val = data[f.id] ?? "";
+    const isAuto = AUTO_FIELDS.has(f.id) && !!val;
     if (f.type === "select" && f.options) {
       return (
         <select id={f.id} value={val} onChange={e => set(f.id, e.target.value)}
-          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+          className={FIELD_INPUT_CLASS}>
           {f.options.map(o => (
             <option key={o.v} value={o.v}>{o.l}</option>
           ))}
@@ -227,13 +232,13 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
           value={val}
           onChange={v => set(f.id, v)}
           placeholder="0,00"
-          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={FIELD_INPUT_CLASS}
         />
       );
     }
     return (
       <input id={f.id} type="text" value={val} onChange={e => set(f.id, e.target.value)}
-        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        className={isAuto ? AUTO_INPUT_CLASS : FIELD_INPUT_CLASS} />
     );
   };
 
@@ -274,15 +279,18 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
         </div>
       )}
 
-      <div className="rounded-3xl border border-blue-200 bg-[#EEF5FF] p-6 shadow-md shadow-slate-900/10">
-        <h2 className="text-xl font-extrabold uppercase tracking-wide text-slate-950 mb-1">🏢 Identificação da Empresa</h2>
+      <div className="rounded-3xl border border-[#D8E2EF] bg-white p-6 shadow-[0_4px_12px_rgba(15,42,86,0.06)]">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="h-6 w-1.5 rounded-full bg-[#2155E5]" />
+          <h2 className="text-xl font-extrabold uppercase tracking-wide text-[#172033]">🏢 Identificação da Empresa</h2>
+        </div>
         <p className="text-xs text-slate-500 mb-3">Consulte o CNPJ para preencher automaticamente os dados cadastrais.</p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <input id="cnpj" type="text" value={cnpjInput} onChange={e => handleCnpjChange(e.target.value)}
             placeholder="00.000.000/0000-00" maxLength={18}
-            className="flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="flex-1 rounded-2xl border border-[#B8C7DC] bg-white px-4 py-3 text-sm text-[#172033] shadow-[0_1px_3px_rgba(15,42,86,0.08)] focus:outline-none focus:ring-2 focus:ring-[#2155E5]/40 focus:border-[#2155E5]" />
           <button onClick={consultarCnpj} disabled={cnpjLoading}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-blue-700 px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:-translate-y-0.5 hover:bg-blue-800 hover:shadow-xl hover:shadow-blue-900/25 disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none">
+            className="flex items-center justify-center gap-2 rounded-2xl bg-[#2155E5] px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:-translate-y-0.5 hover:bg-[#1846C7] hover:shadow-xl hover:shadow-blue-900/25 active:translate-y-0 active:bg-[#1239a8] disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none">
             {cnpjLoading ? (
               <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Consultando...</>
             ) : "Consultar"}
@@ -292,19 +300,25 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {companyFields.map(f => (
             <div key={f.id} className={f.fullWidth ? "sm:col-span-2 lg:col-span-2" : ""}>
-              <label className="block text-xs font-medium text-slate-500 mb-1">{f.label}</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">{f.label}</label>
+              {AUTO_FIELDS.has(f.id) && !!data[f.id] && (
+                <span className="mb-1 inline-flex items-center gap-1 rounded-md bg-[#E2EAF6] px-1.5 py-0.5 text-[10px] font-semibold text-[#516176]">↩ Preenchido automaticamente</span>
+              )}
               {renderField(f)}
             </div>
           ))}
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-[#F5F8FC] p-6 shadow-md shadow-slate-900/10">
-        <h3 className="text-base font-extrabold text-slate-950 mb-4">💰 Dados da Simulação</h3>
+      <div className="rounded-3xl border border-[#D8E2EF] bg-white p-6 shadow-[0_4px_12px_rgba(15,42,86,0.06)]">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="h-5 w-1.5 rounded-full bg-[#2155E5]" />
+          <h3 className="text-base font-extrabold text-[#172033]">💰 Dados da Simulação</h3>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {simulationFields.map(f => (
             <div key={f.id}>
-              <label className="block text-xs font-medium text-slate-500 mb-1">{f.label}</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">{f.label}</label>
               {renderField(f)}
             </div>
           ))}
@@ -312,16 +326,19 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
           {taxFields.map(f => (
             <div key={f.id}>
-              <label className="block text-xs font-medium text-slate-500 mb-1">{f.label}</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">{f.label}</label>
               {renderField(f)}
             </div>
           ))}
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-slate-300 bg-white shadow-md shadow-slate-900/10">
+      <div className="overflow-hidden rounded-3xl border border-[#D8E2EF] bg-white shadow-[0_4px_12px_rgba(15,42,86,0.06)]">
         <button type="button" onClick={() => setAdvancedOpen(value => !value)} className="w-full flex items-center justify-between px-6 py-5 text-left hover:bg-slate-50 transition-colors">
-          <span className="text-base font-extrabold text-slate-950">⚙️ Ajustes Avançados</span>
+          <span className="flex items-center gap-2 text-base font-extrabold text-[#172033]">
+            <span className="h-5 w-1.5 rounded-full bg-[#2155E5]" />
+            ⚙️ Ajustes Avançados
+          </span>
           <span className={`text-slate-400 transition-transform ${advancedOpen ? "rotate-180" : ""}`}>▼</span>
         </button>
         {advancedOpen && (
@@ -329,7 +346,7 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {advancedFields.map(f => (
                 <div key={f.id}>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">{f.label}</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">{f.label}</label>
                   {renderField(f)}
                 </div>
               ))}
@@ -349,7 +366,7 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
       )}
 
       {!hideGenerate && <button onClick={handleGenerate}
-        className="w-full bg-blue-700 hover:bg-blue-800 text-white py-3.5 rounded-xl text-base font-semibold transition-colors">
+        className="w-full bg-[#2155E5] hover:bg-[#1846C7] active:bg-[#1239a8] text-white py-3.5 rounded-xl text-base font-semibold shadow-lg shadow-blue-900/20 transition-colors">
         {buttonLabel}
       </button>}
     </div>
