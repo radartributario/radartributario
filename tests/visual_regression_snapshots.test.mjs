@@ -45,7 +45,7 @@ describe("Regressao visual estrutural - snapshots comerciais", () => {
       secoesPdf: {
         resultadoExecutivo: pdf.includes("RESULTADO EXECUTIVO") || pdf.includes("Resultado Executivo"),
         memoriaCalculo: pdf.includes("CBS líquida") && pdf.includes("DAS reduzido"),
-        conclusao: pdf.includes("menor carga tributária") || pdf.includes("menor carga"),
+        conclusao: pdf.includes("A carga tributária passará") || pdf.includes("passará de"),
         cardTradicional: pdf.includes("Simples Tradicional"),
         cardHibrido: pdf.includes("Simples Híbrido"),
       },

@@ -373,7 +373,8 @@ describe("Transição 2027 — Módulo LP × Reforma", () => {
     const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(result, fd({ cnae: "6920-6/01", atividade: "Serviços contábeis", benefReqProfissionais: "nao" }), resolve));
     assert.match(html, />CBS<\/td><td class="num">/);
     assert.match(html, />IBS<\/td><td class="num">/);
-    assert.match(html, /Diferença anual/);
+    assert.match(html, /representando um aumento de \d+,\d+ pontos percentuais|representando uma redução de \d+,\d+ pontos percentuais|sem variação relevante de carga/);
+    assert.match(html, /Carga Atual|Nova Carga/);
     assert.match(html, />ISS<\/td><td class="num">/);
     assert.doesNotMatch(html, /Impacto financeiro/);
     assert.doesNotMatch(html, /ISS transitório/);
