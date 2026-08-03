@@ -126,6 +126,10 @@ export function useComparadorEngine(
             console.warn("Ignoring stale response for requestId:", resp.requestId);
             return;
           }
+          if (resp.tipoComparacao !== tipoComparacao) {
+            console.warn("Ignoring response for different tipoComparacao:", resp.tipoComparacao);
+            return;
+          }
           clearCalcTimeout();
           currentRequestId.current = null;
           if (resp.success) {
@@ -155,6 +159,10 @@ export function useComparadorEngine(
             console.warn("Ignoring stale PDF response for requestId:", pdfResp.requestId);
             return;
           }
+          if (pdfResp.tipoComparacao !== tipoComparacao) {
+            console.warn("Ignoring PDF response for different tipoComparacao:", pdfResp.tipoComparacao);
+            return;
+          }
           clearPdfTimeout();
           currentRequestId.current = null;
           if (pdfResp.success) {
@@ -181,7 +189,7 @@ export function useComparadorEngine(
         }
       }
     },
-    [origin, iframeRef, clearCalcTimeout, clearPdfTimeout]
+    [origin, iframeRef, tipoComparacao, clearCalcTimeout, clearPdfTimeout]
   );
 
   useEffect(() => {

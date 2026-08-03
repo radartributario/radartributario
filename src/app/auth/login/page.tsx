@@ -43,8 +43,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-800">Compare Tributo</h1>
-          <p className="text-slate-500 mt-1">Descubra o melhor regime para sua empresa</p>
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-700 text-lg font-bold text-white">CT</div>
+          <h1 className="text-3xl font-bold text-slate-800">CompareTributo</h1>
+          <p className="text-slate-500 mt-1">Simulador Tributário Inteligente</p>
         </div>
         <form onSubmit={handleLogin} className="bg-white rounded-2xl shadow-lg p-8 space-y-5">
           <h2 className="text-xl font-semibold text-slate-800">Entrar</h2>

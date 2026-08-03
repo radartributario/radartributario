@@ -7,9 +7,9 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-blue-700 flex items-center justify-center text-white text-sm font-bold">
-              RT
+              CT
             </div>
-            <span className="font-bold text-slate-800 text-lg">Compare Tributo</span>
+            <span className="font-bold text-slate-800 text-lg">CompareTributo</span>
           </div>
           <Link
             href="/auth/login"
@@ -94,7 +94,7 @@ export default function Home() {
         <section className="py-20 px-6">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-3xl font-bold text-slate-900 text-center mb-4">
-              Por que usar o Compare Tributo?
+              Por que usar o CompareTributo?
             </h2>
             <p className="text-slate-500 text-center max-w-xl mx-auto mb-16">
               Ferramentas que fazem a diferença no seu dia a dia.
@@ -139,12 +139,12 @@ export default function Home() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <div className="w-6 h-6 rounded bg-blue-700 flex items-center justify-center text-white text-xs font-bold">
-              RT
+              CT
             </div>
-            Compare Tributo &mdash; Inteligência Tributária
+            CompareTributo &mdash; Inteligência Tributária
           </div>
           <p className="text-sm text-slate-400">
-            &copy; {new Date().getFullYear()} Compare Tributo. Todos os
+            &copy; {new Date().getFullYear()} CompareTributo. Todos os
             direitos reservados.
           </p>
         </div>

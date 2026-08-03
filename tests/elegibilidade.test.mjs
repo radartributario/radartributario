@@ -120,43 +120,42 @@ describe("Segregacao das Receitas", () => {
 });
 
 describe("IRPJ Adicional Memory", () => {
-  it("Receita 5M, pres 8% -> adicional = 16k", () => {
+  it("Receita 5M, pres 8% -> adicional = 34k", () => {
     const receita = 5000000;
     const pres = 0.08;
     const baseIRPJ = receita * pres;
-    const adicional = Math.max(0, (baseIRPJ / 4 - 60000)) * 4 * 0.10;
+    const adicional = Math.max(0, baseIRPJ - 60000) * 0.10;
     assert.strictEqual(baseIRPJ, 400000);
-    assert.strictEqual(adicional, 16000);
+    assert.strictEqual(adicional, 34000);
   });
 
-  it("Receita 1M, pres 8% -> sem adicional", () => {
+  it("Receita 1M, pres 8% -> adicional = 2k", () => {
     const receita = 1000000;
     const pres = 0.08;
     const baseIRPJ = receita * pres;
-    const adicional = Math.max(0, (baseIRPJ / 4 - 60000)) * 4 * 0.10;
+    const adicional = Math.max(0, baseIRPJ - 60000) * 0.10;
     assert.strictEqual(baseIRPJ, 80000);
-    assert.strictEqual(adicional, 0);
+    assert.strictEqual(adicional, 2000);
   });
 
   it("Receita 3M, pres 32% -> adicional presente", () => {
     const receita = 3000000;
     const pres = 0.32;
     const baseIRPJ = receita * pres;
-    const adicional = Math.max(0, (baseIRPJ / 4 - 60000)) * 4 * 0.10;
+    const adicional = Math.max(0, baseIRPJ - 60000) * 0.10;
     assert.strictEqual(baseIRPJ, 960000);
-    assert.strictEqual(adicional, (960000 / 4 - 60000) * 4 * 0.10);
-    assert.strictEqual(adicional, 72000);
+    assert.strictEqual(adicional, 90000);
   });
 
-  it("Excedente = baseIRPJ - 240000", () => {
+  it("Excedente = baseIRPJ - 60000", () => {
     const baseIRPJ = 400000;
-    const excedente = Math.max(0, baseIRPJ - 240000);
-    assert.strictEqual(excedente, 160000);
+    const excedente = Math.max(0, baseIRPJ - 60000);
+    assert.strictEqual(excedente, 340000);
   });
 
-  it("Excedente = 0 quando base <= 240k", () => {
-    const baseIRPJ = 80000;
-    const excedente = Math.max(0, baseIRPJ - 240000);
+  it("Excedente = 0 quando base <= 60k", () => {
+    const baseIRPJ = 60000;
+    const excedente = Math.max(0, baseIRPJ - 60000);
     assert.strictEqual(excedente, 0);
   });
 });

@@ -1,11 +1,10 @@
 import { test, expect } from "@playwright/test";
 
-const EMAIL = process.env.EMAIL_TEST || "";
-const PASSWORD = process.env.PASSWORD_TEST || "";
-
-test.skip(!EMAIL || !PASSWORD, "EMAIL_TEST and PASSWORD_TEST env vars required");
+const EMAIL = process.env.EMAIL_TEST;
+const PASSWORD = process.env.PASSWORD_TEST;
 
 test.describe("Auth Flow", () => {
+  test.skip(!(EMAIL && PASSWORD), "Defina EMAIL_TEST e PASSWORD_TEST para executar os testes E2E");
   test("full auth cycle: login → dashboard → logout → blocked", async ({ page }) => {
     // Intercept login API to remove Secure flag from cookies (production uses https only)
     await page.route("**/api/auth/login", async (route) => {
@@ -26,7 +25,7 @@ test.describe("Auth Flow", () => {
 
     // ===== 1. Login =====
     await page.goto("/auth/login");
-    await expect(page.locator("h1")).toContainText("Compare Tributo");
+    await expect(page.locator("h1")).toContainText("CompareTributo");
     await expect(page.locator("h2")).toContainText("Entrar");
 
     await page.fill('input[type="email"]', EMAIL);
@@ -38,30 +37,23 @@ test.describe("Auth Flow", () => {
     await page.waitForLoadState("networkidle");
 
     // ===== 2. Dashboard Verification =====
-    await expect(page.locator("h1")).toContainText("Selecione a Análise");
+    await expect(page.locator("h1")).toContainText("Nova Simulação Tributária");
+    await expect(page.locator("text=Identificação da Empresa").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Consultar" })).toBeVisible();
     const cards = page.locator("button:has(h3)");
     await expect(cards).toHaveCount(3);
 
     // Verify sidebar
-    await expect(page.locator("text=Sair")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sair" }).first()).toBeVisible();
 
     // Verify iframe exists
     const iframe = page.locator('iframe[title="calc-engine"]');
     await expect(iframe).toHaveAttribute("src", "/comparador.html");
 
-    // ===== 3. Start Analysis (Step 0 → Step 1) =====
-    await cards.first().click();
-    await expect(page.locator("h1")).not.toContainText("Selecione a Análise");
-
-    // ===== 4. Fill Form =====
+    // ===== 3. Fill Form =====
     // Fill company fields (visible by default in "Dados da Empresa")
     await page.fill("#cnpj", "11222333000181");
     await page.fill("#cnae", "4711301");
-
-    // Expand "Dados Econômicos" section (collapsed by default)
-    // Note: only ONE section can be open at a time
-    await page.locator("h3:has-text('Dados Econômicos')").click();
-    await page.waitForTimeout(500);
 
     // Fill economic fields
     await page.fill("#rbt12Input", "1500000");
@@ -69,12 +61,12 @@ test.describe("Auth Flow", () => {
     await page.fill("#salarios", "30000");
     await page.fill("#prolabore", "10000");
 
-    // Click "Gerar diagnóstico tributário"
-    const generateBtn = page.locator("button:has-text('Gerar diagnóstico tributário')");
+    // Select the analysis card after the form is complete
+    const generateBtn = cards.first();
     await generateBtn.scrollIntoViewIfNeeded();
     await generateBtn.click();
 
-    // ===== 5. Wait for Results (Step 2) =====
+    // ===== 4. Wait for Results =====
     const resultSection = page.locator("text=Carga Tributária Efetiva");
     const calcError = page.locator("text=Não foi possível concluir o cálculo");
     const calculating = page.locator("text=Calculando...");
@@ -89,8 +81,17 @@ test.describe("Auth Flow", () => {
 
     console.log(`Calculation outcome: ${outcome}`);
 
+    const simplesMemoryCard = page.locator("[data-testid='calculation-memory-section'] [data-testid='memory-card']").first();
+    await expect(simplesMemoryCard).toContainText("Simples Nacional", { timeout: 30000 });
+    for (const label of ["IRPJ", "CSLL", "PIS", "COFINS", "CPP", "ICMS"]) {
+      await expect(simplesMemoryCard.getByText(label, { exact: true })).toBeVisible();
+    }
+    for (const label of ["ISS", "IPI", "CBS", "IBS"]) {
+      await expect(simplesMemoryCard.getByText(label, { exact: true })).toHaveCount(0);
+    }
+
     // ===== 6. Logout =====
-    await page.click("text=Sair");
+    await page.getByRole("button", { name: "Sair" }).first().click();
     await page.waitForURL("**/auth/login", { timeout: 15000 });
     await expect(page.locator("h2")).toContainText("Entrar");
 

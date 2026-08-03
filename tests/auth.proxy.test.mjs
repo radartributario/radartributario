@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 describe('Auth Proxy — Configuração', () => {
   const protectedRoutes = ['/dashboard'];
@@ -69,5 +70,11 @@ describe('Auth Proxy — Configuração', () => {
   it('cookie de autenticação deve ser sb-access-token', () => {
     const cookieName = 'sb-access-token';
     assert.equal(cookieName, 'sb-access-token');
+  });
+
+  it('dashboard deve consultar /api/auth/me para exibir usuário real', () => {
+    const source = readFileSync(new URL('../src/app/dashboard/page.tsx', import.meta.url), 'utf-8');
+    assert.match(source, /fetch\("\/api\/auth\/me"\)/);
+    assert.doesNotMatch(source, /dev@local/);
   });
 });

@@ -28,6 +28,15 @@ function isMatchingTipo(responseTipo, currentTipo) {
   return responseTipo === currentTipo;
 }
 
+function isCurrentResponse(response, currentRequestId, currentTipo) {
+  return isMatchingRequestId(response.requestId, currentRequestId)
+    && isMatchingTipo(response.tipoComparacao, currentTipo);
+}
+
+function getPdfHtmlFromResponse(response) {
+  return response.success === true ? response.html : undefined;
+}
+
 function isValidResultData(data) {
   if (!data || typeof data !== "object") return false;
   // Must have at least sn and lp for simples vs presumido, or simplesTradicional/simplesHibrido for hibrido
@@ -112,6 +121,20 @@ describe("Protocolo de mensagens", () => {
     assert.strictEqual(isMatchingTipo("SIMPLES_VS_PRESUMIDO", "SIMPLES_VS_PRESUMIDO"), true);
   });
 
+  it("4b. requestId igual mas tipoComparacao diferente é ignorado", () => {
+    const currentRequestId = "req-1";
+    const currentTipo = "SIMPLES_TRADICIONAL_VS_HIBRIDO";
+    const response = { requestId: currentRequestId, tipoComparacao: "SIMPLES_VS_PRESUMIDO" };
+    assert.strictEqual(isCurrentResponse(response, currentRequestId, currentTipo), false);
+  });
+
+  it("4c. requestId e tipoComparacao iguais são aceitos", () => {
+    const currentRequestId = "req-1";
+    const currentTipo = "SIMPLES_TRADICIONAL_VS_HIBRIDO";
+    const response = { requestId: currentRequestId, tipoComparacao: currentTipo };
+    assert.strictEqual(isCurrentResponse(response, currentRequestId, currentTipo), true);
+  });
+
   it("5. troca de módulo limpa resultado anterior", () => {
     // Simulate: has results for type A, then switches to type B
     const resultadosTipoA = { sn: { total: 100 } };
@@ -190,6 +213,11 @@ describe("Protocolo de mensagens", () => {
     assert.strictEqual(isMatchingRequestId(staleResponseId, currentId), false);
   });
 
+  it("12b. PDF usa html no topo da mensagem, não em data.html", () => {
+    const response = { type: "pdfHtml", success: true, html: "<html></html>" };
+    assert.strictEqual(getPdfHtmlFromResponse(response), "<html></html>");
+  });
+
   it("13. validação de estrutura mínima para Simples×Presumido", () => {
     const valid = { sn: { total: 1000 }, lp: { total: 2000 } };
     const invalid = { sn: { total: 1000 } };
@@ -265,6 +293,23 @@ describe("Protocolo de mensagens", () => {
     assert.notStrictEqual(key1, key2);
     assert.notStrictEqual(key2, key3);
     assert.notStrictEqual(key1, key3);
+  });
+
+  it("21. clearAllResults remove as três chaves de resultado", () => {
+    const removed = [];
+    function safeStorageRemove(key) { removed.push(key); }
+    function clearAllResults() {
+      safeStorageRemove("ct_resultados_SIMPLES_VS_PRESUMIDO");
+      safeStorageRemove("ct_resultados_SIMPLES_TRADICIONAL_VS_HIBRIDO");
+      safeStorageRemove("ct_resultados_PRESUMIDO_ATUAL_VS_REFORMA");
+    }
+
+    clearAllResults();
+    assert.deepStrictEqual(removed, [
+      "ct_resultados_SIMPLES_VS_PRESUMIDO",
+      "ct_resultados_SIMPLES_TRADICIONAL_VS_HIBRIDO",
+      "ct_resultados_PRESUMIDO_ATUAL_VS_REFORMA",
+    ]);
   });
 });
 

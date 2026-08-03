@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ConsultTax
 
-## Getting Started
+Aplicação Next.js para simulação tributária comparativa. A UI em React funciona como camada de entrada, autenticação e apresentação; o motor de cálculo fiscal fica em `public/comparador.html` e é executado em um iframe oculto.
 
-First, run the development server:
+## Arquitetura
+
+- `src/app`: rotas Next.js, dashboard, autenticação e APIs.
+- `src/app/dashboard/page.tsx`: controla etapas, formulário, resultado e geração de PDF.
+- `src/app/dashboard/components/SimulacaoForm.tsx`: coleta dados da empresa, dados econômicos e parâmetros tributários.
+- `src/app/dashboard/hooks/useComparadorEngine.ts`: ponte `postMessage` entre React e o iframe do motor.
+- `public/comparador.html`: motor tributário, cálculo, geração de HTML para PDF e handler de mensagens.
+- `tests/*.test.mjs`: testes unitários e de homologação do motor/protocolo.
+- `tests/e2e/*.spec.ts`: testes Playwright de fluxo completo.
+
+## Fluxo De Cálculo
+
+1. O usuário seleciona o tipo de análise no dashboard.
+2. O formulário monta `formData` com os campos informados.
+3. `useComparadorEngine.calculate()` envia `{ type: "calcular", requestId, tipoComparacao, data }` ao iframe `/comparador.html`.
+4. O iframe valida a origem e executa a função do motor correspondente ao `tipoComparacao`.
+5. O iframe retorna `{ type: "resultado", requestId, tipoComparacao, success, data }`.
+6. O hook aceita a resposta somente se `requestId` e `tipoComparacao` coincidirem com a solicitação ativa.
+7. O resultado é salvo em `localStorage` e renderizado por `DashboardResultados`.
+
+## Fluxo De PDF
+
+1. Após confirmação das premissas, o dashboard envia `{ type: "exportPdf", requestId, tipoComparacao, data, resultadoAtual }` ao iframe.
+2. O motor recalcula o cenário e monta o HTML do relatório.
+3. O iframe retorna `{ type: "pdfHtml", requestId, tipoComparacao, success: true, html }`.
+4. O hook abre uma nova janela e chama `print()`.
+
+## Autenticação
+
+- Login: `POST /api/auth/login` autentica via Supabase e grava cookies HttpOnly.
+- Sessão atual: `GET /api/auth/me` valida o token e retorna o usuário real.
+- Logout: `POST /api/auth/logout` remove cookies e limpa dados sensíveis locais.
+- Proteção de rota: `src/proxy.ts` protege `/dashboard` usando o cookie `sb-access-token`.
+
+## Comandos
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
+npm run lint
+npm test
+npm run test:protocol
+npx playwright test
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Observações
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- A baseline oficial está descrita em `VERSAO.md` e `HOMOLOGACAO_TRIBUTARIA_FINAL.md`.
+- Limitações conhecidas estão em `LIMITACOES_CONHECIDAS.md`.
+- Mudanças em regras tributárias devem ser feitas separadamente de correções técnicas e acompanhadas de testes de homologação.

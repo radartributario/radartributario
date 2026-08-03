@@ -1,4 +1,4 @@
-import { STORAGE_SCHEMA_VERSION, getStorageKeyForTipo, type TipoComparacao } from "./ResultadosTypes";
+import { STORAGE_KEYS, STORAGE_SCHEMA_VERSION, getStorageKeyForTipo, type TipoComparacao } from "./ResultadosTypes";
 
 interface StoredResult {
   version: number;
@@ -60,9 +60,9 @@ export function loadResult(
 }
 
 export function clearAllResults(): void {
-  for (const key of Object.values(getStorageKeyForTipo)) {
-    safeStorageRemove(key as string);
-  }
+  safeStorageRemove(STORAGE_KEYS.RESULTADOS_SIMPLES_VS_PRESUMIDO);
+  safeStorageRemove(STORAGE_KEYS.RESULTADOS_SIMPLES_TRADICIONAL_VS_HIBRIDO);
+  safeStorageRemove(STORAGE_KEYS.RESULTADOS_PRESUMIDO_ATUAL_VS_REFORMA);
 }
 
 export function clearSensitiveData(): void {

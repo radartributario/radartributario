@@ -53,6 +53,10 @@ PROJETO_PARA_AUDITORIA.zip
 # playwright
 test-results/
 playwright-report/
+test-output/
+
+# backups
+backups/
 
 # scripts
 scripts/

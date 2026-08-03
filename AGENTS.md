@@ -11,7 +11,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Bug módulo híbrido Strict Mode (dev)**: corrigido
 
 ### Completed
-- **Login real validado via Playwright**: credenciais `rafael.carvalho100@yahoo.com` / `Salmos83/18` → 200 success=True, cookie `sb-access-token` JWT setado com `HttpOnly, Secure, SameSite=lax`
+- **Login real validado via Playwright**: E2E usa `EMAIL_TEST`/`PASSWORD_TEST` (variáveis de ambiente) → 200 success=True, cookie `sb-access-token` JWT setado com `HttpOnly, Secure, SameSite=lax`
 - **E2E Playwright**: `tests/e2e/auth-flow.spec.ts` — login → dashboard (3 cards, iframe, sidebar) → preencher CNPJ/CNAE/dados econômicos → calcular → resultado → logout → dashboard bloqueado. Passa em produção e dev mode.
 - **Cookie Secure flag**: produção requer HTTPS; E2E local usa `page.route` para remover `Secure` do Set-Cookie
 - **IDs nos inputs do formulário**: `id={f.id}` em `SimulacaoForm.tsx` e `CurrencyInput.tsx` para `page.fill()`

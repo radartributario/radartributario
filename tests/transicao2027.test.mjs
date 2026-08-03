@@ -41,7 +41,7 @@ const fn = new Function(
   "document",
   "console",
   codeToEval +
-    "; return { getIbsAliq2027, getSNParams, getAnexoSN, getSNParcelaIcmsIss, calcularSN, calcularLP, calcularCBS, calcularIBS, calcularImpacto, calcularComparacaoSimplesHibrido, calcularComparacaoPresumidoReforma, calcularComparacaoSimplesPresumido, checkEligibility };"
+    "; return { getIbsAliq2027, getSNParams, getAnexoSN, getSNParcelaIcmsIss, calcularSN, calcularLP, calcularCBS, calcularIBS, calcularImpacto, calcularComparacaoSimplesHibrido, calcularComparacaoPresumidoReforma, calcularComparacaoSimplesPresumido, checkEligibility, buildPdfHtmlFromObject };"
 );
 
 const engine = fn(mockWindow, mockDoc, console);
@@ -82,6 +82,10 @@ function fd(overrides = {}) {
     anoSIM: "2027",
     ...overrides,
   };
+}
+
+async function pdfHtmlFor(result, formData) {
+  return new Promise(resolve => engine.buildPdfHtmlFromObject(result, formData, resolve));
 }
 
 describe("Transição 2027 — IBS", () => {
@@ -233,6 +237,191 @@ describe("Transição 2027 — Módulo LP × Reforma", () => {
     if (result.error) throw new Error(result.error);
     assert.strictEqual(result.statusCalculo, "OK");
   });
+
+  it("contabilidade sem confirmação mantém cenário sem benefício em R$ 243.560,00", () => {
+    const result = engine.calcularComparacaoPresumidoReforma(fd({ cnae: "6920-6/01" }));
+    if (result.error) throw new Error(result.error);
+    assert.strictEqual(result.premissas.beneficioProfissional.status, "PENDENTE");
+    assert.strictEqual(result.cenarioFuturo.total, 243560);
+    assert.strictEqual(result.CBS.liquida, 88000.00000000001);
+    assert.strictEqual(result.IBS.liquido, 1000);
+    assert.ok(result.cenariosBeneficio, "deve retornar cenários condicionado com/sem benefício");
+  });
+
+  it("contabilidade com requisitos confirmados aplica redução de 30% na CBS e no IBS", () => {
+    const result = engine.calcularComparacaoPresumidoReforma(fd({
+      cnae: "6920-6/01",
+      benefReqProfissionais: "sim",
+      benefReqSemSocioPJ: "sim",
+      benefReqNaoParticipaPJ: "sim",
+      benefReqExclusiva: "sim",
+      benefReqDireta: "sim",
+    }));
+    if (result.error) throw new Error(result.error);
+    assert.strictEqual(result.premissas.beneficioProfissional.status, "APLICADO");
+    assert.strictEqual(result.CBS.aliq, 6.16);
+    assert.strictEqual(result.CBS.debito, 73920);
+    assert.strictEqual(result.CBS.credito, 17600);
+    assert.strictEqual(result.CBS.liquida, 56320);
+    assert.ok(Math.abs(result.IBS.aliq - 0.07) < 0.0001);
+    assert.strictEqual(result.IBS.debito, 840);
+    assert.strictEqual(result.IBS.credito, 200);
+    assert.strictEqual(result.IBS.liquido, 640);
+    assert.strictEqual(result.cenarioFuturo.total, 211520);
+  });
+
+  it("contabilidade com requisito negado não aplica benefício profissional", () => {
+    const result = engine.calcularComparacaoPresumidoReforma(fd({ cnae: "6920601", benefReqProfissionais: "nao" }));
+    if (result.error) throw new Error(result.error);
+    assert.strictEqual(result.premissas.beneficioProfissional.status, "NAO_APLICADO");
+    assert.strictEqual(result.CBS.aliq, 8.8);
+    assert.strictEqual(result.IBS.aliq, 0.1);
+    assert.strictEqual(result.cenarioFuturo.total, 243560);
+    assert.strictEqual(result.cenariosBeneficio, null);
+  });
+
+  it("contabilidade pendente informa cenários com e sem benefício sem perder comparação financeira", () => {
+    const result = engine.calcularComparacaoPresumidoReforma(fd({ cnae: "69206" }));
+    if (result.error) throw new Error(result.error);
+    assert.strictEqual(result.premissas.cbsNomenclatura.base, "CBS sobre prestação de serviços");
+    assert.strictEqual(result.premissas.ibsNomenclatura.base, "IBS sobre prestação de serviços");
+    assert.strictEqual(result.cenariosBeneficio.comBeneficioConfirmado.total, 211520);
+    assert.strictEqual(result.cenariosBeneficio.semBeneficioConfirmado.total, 243560);
+    assert.strictEqual(result.comparacaoFinanceira.valorAnual, 45200);
+  });
+
+  it("regressão visual: valores principais e impactos do cenário pendente", () => {
+    const result = engine.calcularComparacaoPresumidoReforma(fd({ cnae: "6920-6/01" }));
+    if (result.error) throw new Error(result.error);
+    const atual = result.lucroPresumidoAtual;
+    const com = result.cenariosBeneficio.comBeneficioConfirmado;
+    const sem = result.cenariosBeneficio.semBeneficioConfirmado;
+    assert.strictEqual(atual.total, 198360);
+    assert.strictEqual(atual.aliquota, 16.53);
+    assert.strictEqual(atual.media, 16530);
+    assert.strictEqual(atual.iss, 30000);
+    assert.strictEqual(com.total, 211520);
+    assert.ok(Math.abs(com.aliquotaTotal - 17.6266666667) < 0.0001);
+    assert.strictEqual(sem.total, 243560);
+    assert.ok(Math.abs(sem.aliquotaTotal - 20.2966666667) < 0.0001);
+    assert.strictEqual(com.total - atual.total, 13160);
+    assert.ok(Math.abs((com.total - atual.total) / atual.total * 100 - 6.6344020972) < 0.0001);
+    assert.strictEqual(sem.total - atual.total, 45200);
+    assert.ok(Math.abs((sem.total - atual.total) / atual.total * 100 - 22.786852188) < 0.0001);
+  });
+
+  it("detalhamento LP atual retorna PIS, Cofins e bases para memória", () => {
+    const result = engine.calcularComparacaoPresumidoReforma(fd({ cnae: "6920-6/01" }));
+    if (result.error) throw new Error(result.error);
+    const atual = result.lucroPresumidoAtual;
+    assert.strictEqual(atual.baseIRPJ, 384000);
+    assert.strictEqual(atual.baseAdic, 324000);
+    assert.strictEqual(atual.baseCSLL, 384000);
+    assert.strictEqual(atual.irpj15, 57600);
+    assert.strictEqual(atual.irpjAdic, 32400);
+    assert.strictEqual(atual.csll, 34560);
+    assert.strictEqual(atual.pis, 7800);
+    assert.strictEqual(atual.cofins, 36000);
+  });
+
+  it("PDF pendente mostra os dois cenários e não define total futuro único", async () => {
+    const result = engine.calcularComparacaoPresumidoReforma(fd({ cnae: "6920-6/01" }));
+    if (result.error) throw new Error(result.error);
+    const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(result, fd({ cnae: "6920-6/01", atividade: "Serviços contábeis" }), resolve));
+    assert.match(html, /Benefício Fiscal/);
+    assert.match(html, /LC 214\/2025/);
+    assert.doesNotMatch(html, /30% da carga tributária/);
+    assert.match(html, /Resultado condicionado/);
+    assert.match(html, /Pós-Reforma com benefício/);
+    assert.match(html, /Pós-Reforma sem benefício/);
+    assert.match(html, /R\$ 211\.520,00/);
+    assert.match(html, /R\$ 243\.560,00/);
+    assert.doesNotMatch(html, /Regime\/cenário favorecido/);
+  });
+
+  it("PDF confirmado omite cenário sem benefício", async () => {
+    const confirmado = fd({
+      cnae: "6920-6/01",
+      atividade: "Serviços contábeis",
+      benefReqProfissionais: "sim",
+      benefReqSemSocioPJ: "sim",
+      benefReqNaoParticipaPJ: "sim",
+      benefReqExclusiva: "sim",
+      benefReqDireta: "sim",
+    });
+    const result = engine.calcularComparacaoPresumidoReforma(confirmado);
+    if (result.error) throw new Error(result.error);
+    const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(result, confirmado, resolve));
+    assert.match(html, /R\$ 211\.520,00/);
+    assert.doesNotMatch(html, /Pós-Reforma sem benefício/);
+    assert.doesNotMatch(html, /R\$ 243\.560,00/);
+  });
+
+  it("PDF negado omite cenário com benefício", async () => {
+    const negado = fd({ cnae: "6920-6/01", atividade: "Serviços contábeis", benefReqProfissionais: "nao" });
+    const result = engine.calcularComparacaoPresumidoReforma(negado);
+    if (result.error) throw new Error(result.error);
+    const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(result, negado, resolve));
+    assert.match(html, /R\$ 243\.560,00/);
+    assert.doesNotMatch(html, /Pós-Reforma com benefício/);
+    assert.doesNotMatch(html, /R\$ 211\.520,00/);
+  });
+
+  it("PDF contém memória CBS/IBS de serviços e não usa bloco de impacto financeiro", async () => {
+    const result = engine.calcularComparacaoPresumidoReforma(fd({ cnae: "6920-6/01", benefReqProfissionais: "nao" }));
+    if (result.error) throw new Error(result.error);
+    const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(result, fd({ cnae: "6920-6/01", atividade: "Serviços contábeis", benefReqProfissionais: "nao" }), resolve));
+    assert.match(html, />CBS<\/td><td class="num">/);
+    assert.match(html, />IBS<\/td><td class="num">/);
+    assert.match(html, /Diferença anual/);
+    assert.match(html, />ISS<\/td><td class="num">/);
+    assert.doesNotMatch(html, /Impacto financeiro/);
+    assert.doesNotMatch(html, /ISS transitório/);
+    assert.doesNotMatch(html, /Economia anual/);
+  });
+});
+
+describe("Memória Resumida dinâmica no PDF", () => {
+  it("comércio exibe ICMS e oculta ISS/IPI sem incidência", async () => {
+    const data = fd({ cnae: "4789-0/99", tipoAtivLP: "comercio", segregacao: "0", aliquotaISS: "0", aliquotaICMS: "18", aliquotaIPI: "0" });
+    const result = engine.calcularComparacaoSimplesPresumido(data);
+    if (result.error) throw new Error(result.error);
+    const html = await pdfHtmlFor(result, data);
+    assert.match(html, />ICMS<\/td><td class="num">/);
+    assert.doesNotMatch(html, />ISS<\/td><td class="num">/);
+    assert.doesNotMatch(html, />IPI<\/td><td class="num">/);
+  });
+
+  it("serviços exibe ISS e oculta ICMS", async () => {
+    const data = fd({ cnae: "6920-6/01", tipoAtivLP: "servicos", segregacao: "100", aliquotaISS: "2.5", aliquotaICMS: "0" });
+    const result = engine.calcularComparacaoSimplesPresumido(data);
+    if (result.error) throw new Error(result.error);
+    const html = await pdfHtmlFor(result, data);
+    assert.match(html, />ISS<\/td><td class="num">/);
+    assert.doesNotMatch(html, />ICMS<\/td><td class="num">/);
+  });
+
+  it("indústria exibe ICMS e IPI", async () => {
+    const data = fd({ cnae: "1012-1/00", tipoAtivLP: "industria", segregacao: "0", aliquotaISS: "0", aliquotaICMS: "18", aliquotaIPI: "5" });
+    const result = engine.calcularComparacaoSimplesPresumido(data);
+    if (result.error) throw new Error(result.error);
+    const html = await pdfHtmlFor(result, data);
+    assert.match(html, />ICMS<\/td><td class="num">/);
+    assert.match(html, />IPI<\/td><td class="num">/);
+  });
+
+  it("IRPJ Adicional aparece somente quando há incidência", async () => {
+    const comAdicional = fd({ cnae: "6920-6/01", tipoAtivLP: "servicos", rbt12Input: "1.200.000,00" });
+    const semAdicional = fd({ cnae: "4789-0/99", tipoAtivLP: "comercio", segregacao: "0", rbt12Input: "500.000,00", aliquotaICMS: "18", aliquotaISS: "0" });
+    const resultCom = engine.calcularComparacaoSimplesPresumido(comAdicional);
+    const resultSem = engine.calcularComparacaoSimplesPresumido(semAdicional);
+    if (resultCom.error) throw new Error(resultCom.error);
+    if (resultSem.error) throw new Error(resultSem.error);
+    const htmlCom = await pdfHtmlFor(resultCom, comAdicional);
+    const htmlSem = await pdfHtmlFor(resultSem, semAdicional);
+    assert.match(htmlCom, />IRPJ Adicional<\/td><td class="num">/);
+    assert.doesNotMatch(htmlSem, />IRPJ Adicional<\/td><td class="num">/);
+  });
 });
 
 describe("TESTE 5 — Isolamento: SN×LP sem CBS/IBS", () => {
@@ -298,7 +487,7 @@ describe("TESTE S1 — Impedimento j\u00E1 vigente", () => {
     // Validate DAS and SN total for R$4M, Anexo III, 6ª faixa
     assert.ok(Math.abs(result.sn.dasAnual - 672000) < 2, "DAS anual ~ R$ 672.000 (33% - R$648.000)");
     assert.ok(Math.abs(result.sn.total - 772000) < 2, "SN total ~ R$ 772.000 (DAS + ISS)");
-    assert.ok(Math.abs(result.lp.total - 657200) < 2, "LP total ~ R$ 657.200");
+    assert.ok(Math.abs(result.lp.total - 675200) < 2, "LP total ~ R$ 675.200");
   });
 });
 
@@ -351,11 +540,11 @@ describe("TESTE S6 — Lucro Presumido", () => {
     const result = engine.calcularComparacaoSimplesPresumido(fdSN({ receitaAnoAnterior: "4000000" }));
     if (result.error) throw new Error(result.error);
     assert.ok(Math.abs(result.lp.irpj15 - 192000) < 2, "IRPJ 15% = R$ 192.000 (1.280.000 x 15%)");
-    assert.ok(Math.abs(result.lp.irpjAdic - 104000) < 2, "IRPJ Adicional = R$ 104.000");
+    assert.ok(Math.abs(result.lp.irpjAdic - 122000) < 2, "IRPJ Adicional = R$ 122.000");
     assert.ok(Math.abs(result.lp.csll - 115200) < 2, "CSLL = R$ 115.200");
     assert.ok(Math.abs(result.lp.pisCofins - 146000) < 2, "PIS/COFINS = R$ 146.000 (3,65%)");
     assert.ok(Math.abs(result.lp.iss - 100000) < 2, "ISS = R$ 100.000 (2,5% de R$ 4.000.000)");
-    assert.ok(Math.abs(result.lp.total - 657200) < 2, "LP total = R$ 657.200");
+    assert.ok(Math.abs(result.lp.total - 675200) < 2, "LP total = R$ 675.200");
   });
 });
 

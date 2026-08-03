@@ -51,9 +51,9 @@ const modos: {
 
 export default function ModoSelecao({ onSelect }: ModoSelecaoProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-900/5">
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-slate-800">
+        <h2 className="text-2xl font-bold text-slate-950">
           Qual análise você deseja realizar?
         </h2>
         <p className="text-sm text-slate-500">
@@ -66,7 +66,7 @@ export default function ModoSelecao({ onSelect }: ModoSelecaoProps) {
           <button
             key={modo.id}
             onClick={() => onSelect(modo.id)}
-            className="group relative flex flex-col items-start text-left p-6 rounded-xl border border-slate-200 bg-white hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer"
+            className="group relative flex flex-col items-start text-left p-6 rounded-2xl border border-slate-300 bg-white hover:border-blue-400 hover:shadow-lg hover:shadow-blue-900/10 transition-all duration-200 cursor-pointer"
           >
             {modo.selo && (
               <span
@@ -82,7 +82,7 @@ export default function ModoSelecao({ onSelect }: ModoSelecaoProps) {
 
             <span className="text-2xl mb-3">{modo.icon}</span>
 
-            <h3 className="text-base font-semibold text-slate-800 leading-snug mb-1">
+            <h3 className="text-base font-bold text-slate-950 leading-snug mb-1">
               {modo.titulo}
             </h3>
 

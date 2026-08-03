@@ -6,6 +6,10 @@ const html = readFileSync(
   new URL("../public/comparador.html", import.meta.url),
   "utf-8"
 );
+const dashboardHibridoSource = readFileSync(
+  new URL("../src/app/dashboard/components/DashboardResultadosHibrido.tsx", import.meta.url),
+  "utf-8"
+);
 
 const jsMatch = html.match(/<script>([\s\S]*?)<\/script>/);
 if (!jsMatch) throw new Error("No script found");
@@ -39,10 +43,11 @@ const fn = new Function(
   "document",
   "console",
   codeToEval +
-    "; return { BENEFICIOS_CBS_IBS, getBeneficioCNAE, getCbsReducao, getCbsAliqEfetiva, calcularComparacaoSimplesHibrido };"
+    "; return { BENEFICIOS_CBS_IBS, getBeneficioCNAE, getCbsReducao, getCbsAliqEfetiva, normalizeCnae, getCnaeDescricaoTributaria, getAnexoSN, getSNParams, isCnaeContabilidade, getCbsNomenclatura, calcularComparacaoSimplesHibrido, buildPdfHtmlFromObject };"
 );
 
 const engine = fn(mockWindow, mockDoc, console);
+const moeda = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 
 function fd(overrides = {}) {
   return {
@@ -191,6 +196,15 @@ describe("getBeneficioCNAE()", () => {
     assert.ok(b);
     assert.strictEqual(b.pct, 0.30);
   });
+
+  it("CNAE contabilidade em diferentes formatações aponta para o mesmo benefício", () => {
+    for (const cnae of ["6920-6/01", "6920-6", "6920601", "69206", "6920"]) {
+      const b = engine.getBeneficioCNAE(cnae);
+      assert.ok(b, `benefício não encontrado para ${cnae}`);
+      assert.strictEqual(b.inciso, "VII");
+      assert.strictEqual(engine.getCnaeDescricaoTributaria(cnae), "Serviços contábeis");
+    }
+  });
 });
 
 // ==========================
@@ -250,7 +264,12 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
       aliqCbsFora: data.aliqCbsFora,
       aliqCbsCompras: data.aliqCbsCompras ?? "8.8",
       credCbsPct: data.credCbsPct,
-      confirmadoBeneficioArt127: data.confirmadoBeneficioArt127 ?? false
+      confirmadoBeneficioArt127: data.confirmadoBeneficioArt127 ?? false,
+      benefReqProfissionais: data.benefReqProfissionais,
+      benefReqSemSocioPJ: data.benefReqSemSocioPJ,
+      benefReqNaoParticipaPJ: data.benefReqNaoParticipaPJ,
+      benefReqExclusiva: data.benefReqExclusiva,
+      benefReqDireta: data.benefReqDireta
     };
     return engine.calcularComparacaoSimplesHibrido(formData);
   }
@@ -338,5 +357,280 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
     // Verificar que o débito NÃO mudou com a presença de compras
     assert.ok(Math.abs(rComCompra.CBS.debito - rSemCompra.CBS.debito) < 1,
       "débito não deve mudar com compras");
+  });
+
+  it("Cenário contábil confirmado fecha em CBS 6,16% e total híbrido R$ 187.021,32", () => {
+    const r = calc({
+      cnae: "6920-6/01",
+      rbt12: "1.200.000,00",
+      comprasInput: "200.000,00",
+      salarios: "50000",
+      confirmadoBeneficioArt127: true,
+    });
+    assert.strictEqual(r.premissas.parametrosHibrido2027.versao, "simples-hibrido-2027-ibs-off-1");
+    assert.strictEqual(r.simplesTradicional.anexo, "Anexo III");
+    assert.ok(Math.abs(r.simplesTradicional.total - 156360) < 0.02);
+    assert.strictEqual(r.CBS.aliqPadrao, 8.8);
+    assert.ok(Math.abs(r.CBS.aliq - 6.16) < 0.01);
+    assert.ok(Math.abs(r.CBS.debito - 73920) < 0.02);
+    assert.ok(Math.abs(r.CBS.credito - 17600) < 0.02);
+    assert.ok(Math.abs(r.CBS.liquida - 56320) < 0.02);
+    assert.ok(Math.abs(r.simplesHibrido.dasReduzido - moeda(r.simplesHibrido.dasIntegral - r.simplesHibrido.parcelaCbsRetiradaDoDas)) < 0.02);
+    assert.ok(Math.abs(r.simplesHibrido.parcelaCbsRetiradaDoDas - 25658.68) < 0.02);
+    assert.strictEqual(r.simplesHibrido.parcelaIbsRetiradaDoDas, 0);
+    assert.ok(Math.abs(r.simplesHibrido.dasReduzido - 130701.32) < 0.02);
+    assert.ok(Math.abs(r.simplesHibrido.total - 187021.32) < 0.02);
+    assert.strictEqual(moeda(r.simplesHibrido.total), moeda(r.simplesHibrido.dasReduzido + r.CBS.liquida));
+    assert.strictEqual(r.simplesHibrido.ibsLiquido, 0);
+    assert.strictEqual(moeda(r.simplesHibrido.total), moeda(r.simplesHibrido.dasReduzido + r.CBS.liquida + r.simplesHibrido.ibsLiquido));
+    assert.ok(Math.abs(r.comparacaoFinanceira.valorAnual - 30661.32) < 0.02);
+    assert.ok(Math.abs(r.comparacaoFinanceira.percentual - 19.61) < 0.02);
+    assert.ok(Math.abs(r.simplesTradicional.aliquota - 13.03) < 0.01);
+    assert.ok(Math.abs(r.simplesHibrido.aliquota - 15.59) < 0.01);
+    assert.ok(Math.abs(r.simplesHibrido.media - 15585.11) < 0.02);
+    assert.strictEqual(r.premissas.cbsNomenclatura.base, "CBS sobre prestação de serviços");
+    assert.strictEqual(r.premissas.cbsNomenclatura.debito, "Débito sobre serviços");
+    assert.strictEqual(r.cenariosBeneficio, null);
+  });
+
+  it("Nomenclatura CBS varia por natureza da atividade", () => {
+    assert.strictEqual(engine.getCbsNomenclatura("6920-6/01", "servicos").base, "CBS sobre prestação de serviços");
+    assert.strictEqual(engine.getCbsNomenclatura("4711-3/01", "comercio").base, "CBS sobre vendas de mercadorias");
+    assert.strictEqual(engine.getCbsNomenclatura("1012-1/00", "industria").base, "CBS sobre vendas de produtos");
+    assert.strictEqual(engine.getCbsNomenclatura("0000-0/00", "mista").base, "CBS sobre receitas tributáveis");
+  });
+
+  it("Contabilidade com folha zerada nunca cai no Anexo V", () => {
+    const r = calc({
+      cnae: "6920-6/01",
+      rbt12: "1.200.000,00",
+      comprasInput: "200.000,00",
+      salarios: "0",
+      prolabore: "0",
+      confirmadoBeneficioArt127: true,
+    });
+    assert.strictEqual(r.premissas.cnaeNormalizado, "6920601");
+    assert.strictEqual(r.premissas.atividadeDescricao, "Serviços contábeis");
+    assert.strictEqual(r.premissas.categoriaTributaria, "contabilidade");
+    assert.strictEqual(r.premissas.fatorRAplicavel, false);
+    assert.strictEqual(r.premissas.fatorRDescricao, "Não utilizado para definição do Anexo nesta atividade.");
+    assert.strictEqual(r.simplesTradicional.anexo, "Anexo III");
+    assert.strictEqual(r.premissas.faixa, 4);
+    assert.ok(Math.abs(r.simplesTradicional.total - 156360) < 0.02);
+    assert.ok(Math.abs(r.simplesTradicional.aliquota - 13.03) < 0.01);
+    assert.strictEqual(typeof r.simplesTradicional.aliqNominal, "number");
+    assert.strictEqual(typeof r.simplesTradicional.deducao, "number");
+    const paramsFaixa = engine.getSNParams(r.simplesTradicional.anexo, r.simplesTradicional.rbt12);
+    assert.deepStrictEqual(
+      { aliq: r.simplesTradicional.aliqNominal, deducao: r.simplesTradicional.deducao },
+      paramsFaixa
+    );
+    assert.notStrictEqual(r.simplesTradicional.total, 228900);
+    assert.notStrictEqual(r.simplesTradicional.aliquota, 19.075);
+    assert.notStrictEqual(r.simplesTradicional.anexo, "Anexo V");
+  });
+
+  it("Todos os formatos de CNAE contábil permanecem no Anexo III independentemente da folha", () => {
+    const folhas = ["0", "10000", "28000", "50000"];
+    for (const cnae of ["6920-6/01", "6920-6", "6920601", "69206", "6920"]) {
+      assert.strictEqual(engine.isCnaeContabilidade(cnae), true, `${cnae} deveria ser contabilidade`);
+      for (const salarios of folhas) {
+        const r = calc({ cnae, rbt12: "1.200.000,00", comprasInput: "200.000,00", salarios, prolabore: "0", confirmadoBeneficioArt127: true });
+        assert.strictEqual(r.simplesTradicional.anexo, "Anexo III", `${cnae} folha ${salarios}`);
+        assert.ok(Math.abs(r.simplesTradicional.total - 156360) < 0.02, `${cnae} folha ${salarios}`);
+      }
+    }
+  });
+
+  it("Cenário contábil não confirmado mantém CBS 8,80% e total híbrido R$ 218.701,32", () => {
+    const r = calc({
+      cnae: "6920-6/01",
+      rbt12: "1.200.000,00",
+      comprasInput: "200.000,00",
+      salarios: "50000",
+      confirmadoBeneficioArt127: "nao",
+    });
+    assert.strictEqual(r.premissas.beneficioProfissional.status, "NAO_APLICADO");
+    assert.strictEqual(r.CBS.aliq, 8.8);
+    assert.strictEqual(r.CBS.reducao, null);
+    assert.ok(Math.abs(r.CBS.liquida - 88000) < 0.02);
+    assert.ok(Math.abs(r.simplesHibrido.total - 218701.32) < 0.02);
+  });
+
+  it("Cenário contábil sem resposta apresenta os dois resultados", () => {
+    const r = engine.calcularComparacaoSimplesHibrido({
+      rbt12Input: "1.200.000,00", comprasInput: "200.000,00", salarios: "50000", prolabore: "0",
+      inss: "20", rat: "3", terceiros: "3.3", fgts: "8", aliquotaISS: "2.5", aliquotaICMS: "0",
+      tipoAtivLP: "servicos", cnae: "6920-6/01", optOutPct: "100", anoSIM: "2027", aliqCbsFora: "8.8", aliqCbsCompras: "8.8"
+    });
+    assert.strictEqual(r.premissas.beneficioProfissional.status, "PENDENTE");
+    assert.strictEqual(r.conclusao.vencedor, "Resultado condicionado");
+    assert.strictEqual(r.conclusao.tipoImpacto, "CONDICIONADO");
+    assert.ok(r.cenariosBeneficio?.comBeneficioConfirmado);
+    assert.ok(r.cenariosBeneficio?.semBeneficioConfirmado);
+    assert.ok(Math.abs(r.cenariosBeneficio.comBeneficioConfirmado.simplesHibrido.total - 187021.32) < 0.02);
+    assert.ok(Math.abs(r.cenariosBeneficio.semBeneficioConfirmado.simplesHibrido.total - 218701.32) < 0.02);
+  });
+
+  it("Confirmação pelos cinco requisitos legais aplica o benefício", () => {
+    const r = calc({
+      cnae: "6920-6/01", rbt12: "1.200.000,00", comprasInput: "200.000,00", salarios: "50000",
+      confirmadoBeneficioArt127: undefined,
+      benefReqProfissionais: "sim", benefReqSemSocioPJ: "sim", benefReqNaoParticipaPJ: "sim", benefReqExclusiva: "sim", benefReqDireta: "sim",
+    });
+    assert.strictEqual(r.premissas.beneficioProfissional.status, "APLICADO");
+    assert.ok(Math.abs(r.CBS.aliq - 6.16) < 0.01);
+  });
+
+  it("Compras zero zeram o crédito sem alterar o débito reduzido", () => {
+    const r = calc({ cnae: "6920-6/01", rbt12: "1.200.000,00", comprasInput: "0", salarios: "50000", confirmadoBeneficioArt127: true });
+    assert.ok(Math.abs(r.CBS.debito - 73920) < 0.02);
+    assert.strictEqual(r.CBS.credito, 0);
+    assert.ok(Math.abs(r.CBS.liquida - 73920) < 0.02);
+  });
+
+  it("Detalhamento completo do Simples Tradicional, DAS ajustado e IBS zerado é retornado", () => {
+    const r = calc({ cnae: "6920-6/01", rbt12: "1.200.000,00", comprasInput: "200.000,00", salarios: "50000", confirmadoBeneficioArt127: true });
+    const tradTributos = r.detalhamento.simplesTradicional.map(x => x.tributo);
+    for (const tributo of ["IRPJ", "CSLL", "PIS", "Cofins", "CPP", "ISS", "CBS", "IBS", "Total do DAS"]) {
+      assert.ok(tradTributos.includes(tributo), `faltou ${tributo}`);
+    }
+    const totalAjustado = r.detalhamento.dasAjustado.find(x => x.tributo === "Total do DAS");
+    assert.ok(Math.abs(totalAjustado.valorAnual - r.simplesHibrido.dasReduzido) < 0.02);
+    assert.strictEqual(r.simplesHibrido.parcelaIbsRetiradaDoDas, 0);
+    assert.strictEqual(r.simplesHibrido.ibsLiquido, 0);
+    assert.ok(Math.abs(r.simplesHibrido.total - (r.simplesHibrido.dasReduzido + r.CBS.liquida)) < 0.02);
+    assert.strictEqual(r.IBS.liquido, 0);
+    assert.ok(r.detalhamento.tributosRetirados.some(x => x.tributo === "IBS retirado do DAS"));
+  });
+
+  it("PDF gerado contém benefício, memória CBS/IBS e os mesmos valores principais", async () => {
+    const r = calc({ cnae: "6920-6/01", rbt12: "1.200.000,00", comprasInput: "200.000,00", salarios: "50000", confirmadoBeneficioArt127: true });
+    const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(r, { cnae: "6920-6/01", atividade: "Serviços contábeis", rbt12Input: "1.200.000,00", comprasInput: "200.000,00", salarios: "50000" }, resolve));
+    assert.ok(html.includes("Premissas da Simulação"));
+    assert.ok(html.includes("Benefício Fiscal"));
+    assert.ok(html.includes("LC 214/2025"));
+    assert.ok(html.includes("Resultado Executivo"));
+    assert.ok(html.includes("Memória Resumida"));
+    assert.ok(html.includes("CBS"));
+    assert.ok(html.includes("IBS (2027)"));
+    assert.ok(html.includes("Não produz impacto financeiro nesta simulação"));
+    assert.ok(html.includes("Permanece recolhido dentro do DAS nesta premissa do simulador"));
+    assert.ok(html.includes("Simples Tradicional"));
+    assert.ok(html.includes("Simples Híbrido"));
+    assert.ok(html.includes("R$ 56.320,00"));
+    assert.ok(html.includes("R$ 187.021,32"));
+    assert.ok(html.includes("15,59%"));
+    assert.ok(html.includes("R$ 2.555,11"));
+    assert.ok(html.includes("Receita tributável"));
+    assert.ok(html.includes("Compras com crédito"));
+    assert.ok(!html.includes("DAS reduzido + CBS líquida + IBS"));
+    assert.ok(!html.includes("+ IBS líquido"));
+    assert.ok(html.includes("Anexo III"));
+    assert.ok(!html.includes("R$ 228.900,00"));
+    assert.ok(!html.includes("R$ 88.000,00"));
+    assert.ok(!html.includes("R$ 218.701,32"));
+    assert.ok(!html.includes("Híbrido sem benefício"));
+    assert.ok(!html.toLowerCase().includes("pendente"));
+    assert.ok(!html.includes("Status"));
+  });
+
+  it("PDF sem respostas exibe redução prevista sem usar linguagem de pendência", async () => {
+    const r = engine.calcularComparacaoSimplesHibrido({
+      rbt12Input: "1.200.000,00", comprasInput: "200.000,00", salarios: "0", prolabore: "0",
+      inss: "20", rat: "3", terceiros: "3.3", fgts: "8", aliquotaISS: "2.5", aliquotaICMS: "0",
+      tipoAtivLP: "servicos", cnae: "6920-6/01", optOutPct: "100", anoSIM: "2027", aliqCbsFora: "8.8", aliqCbsCompras: "8.8"
+    });
+    const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(r, { cnae: "6920-6/01", atividade: "Serviços contábeis", rbt12Input: "1.200.000,00", comprasInput: "200.000,00", salarios: "0" }, resolve));
+    assert.ok(html.includes("Benefício Fiscal"));
+    assert.ok(html.includes("Simples Tradicional") && html.includes("menor carga tributária"));
+    assert.ok(html.includes("Simples Híbrido"));
+    assert.ok(html.includes("R$ 187.021,32"));
+    assert.ok(!html.includes("R$ 218.701,32"));
+    assert.ok(html.includes("Anexo III"));
+    assert.ok(!html.includes("Anexo V"));
+    assert.ok(!html.includes("R$ 228.900,00"));
+    assert.ok(!html.toLowerCase().includes("pendente"));
+    assert.ok(!html.includes("Resultado condicionado"));
+    assert.ok(!html.includes("não elege vencedor"));
+    assert.ok(!html.includes("Status"));
+  });
+
+  it("Interpretação visual Híbrido: tradicional menor gera aumento e vencedor tradicional", async () => {
+    const r = calc({ cnae: "6920-6/01", rbt12: "1.200.000,00", comprasInput: "200.000,00", salarios: "0", confirmadoBeneficioArt127: true });
+    const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(r, { cnae: "6920-6/01", rbt12Input: "1.200.000,00", comprasInput: "200.000,00", salarios: "0" }, resolve));
+    assert.ok(Math.abs(r.simplesTradicional.total - 156360) < 0.02);
+    assert.ok(Math.abs(r.simplesHibrido.total - 187021.32) < 0.02);
+    assert.ok(html.includes("Aumento de carga"));
+    assert.ok(html.includes("Regime recomendado</span><strong>Simples Tradicional"));
+    assert.ok(html.includes("Com base nas premissas informadas, o Simples Tradicional apresentou menor carga tributária"));
+  });
+
+  it("Interpretação visual Híbrido: híbrido menor gera economia e vencedor híbrido", async () => {
+    const r = {
+      tipoComparacao: "SIMPLES_TRADICIONAL_VS_HIBRIDO",
+      simplesTradicional: { total: 156360, aliquota: 13.03, das: 156360, anexo: "Anexo III", rbt12: 1200000 },
+      simplesHibrido: { total: 134221.32, aliquota: 11.19, dasIntegral: 156360, parcelaCbsRetiradaDoDas: 25658.68, dasReduzido: 102221.32 },
+      CBS: { liquida: 32000, aliq: 6.16, aliqCompras: 8.8, debito: 73920, credito: 41920 },
+      premissas: { compras: 476363.64, anexo: "Anexo III", beneficioProfissional: { potencial: true, pctReducao: 30, baseLegal: "LC 214/2025" } },
+      detalhamento: { simplesTradicional: [] },
+      conclusao: { vencedor: "Simples Tradicional" },
+      comparacaoFinanceira: { valorAnual: 999999, tipo: "AUMENTO" }
+    };
+    const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(r, { cnae: "6920-6/01", rbt12Input: "1.200.000,00", comprasInput: "476.363,64" }, resolve));
+    assert.ok(html.includes("Economia anual"));
+    assert.ok(html.includes("Regime recomendado</span><strong>Simples Híbrido"));
+    assert.ok(html.includes("Com base nas premissas informadas, o Simples Híbrido apresentou menor carga tributária"));
+    assert.ok(!html.includes("R$ 999.999,00"));
+  });
+
+  it("Interpretação visual Híbrido: valores iguais geram empate sem vencedor", async () => {
+    const r = {
+      tipoComparacao: "SIMPLES_TRADICIONAL_VS_HIBRIDO",
+      simplesTradicional: { total: 150000, aliquota: 12.5, das: 150000, anexo: "Anexo III", rbt12: 1200000 },
+      simplesHibrido: { total: 150000, aliquota: 12.5, dasIntegral: 150000, parcelaCbsRetiradaDoDas: 0, dasReduzido: 150000 },
+      CBS: { liquida: 0, aliq: 8.8, aliqCompras: 8.8, debito: 0, credito: 0 },
+      premissas: { compras: 0, anexo: "Anexo III" },
+      detalhamento: { simplesTradicional: [] },
+      conclusao: { vencedor: "Simples Tradicional" },
+      comparacaoFinanceira: { valorAnual: 12345, tipo: "AUMENTO" }
+    };
+    const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(r, { cnae: "6920-6/01", rbt12Input: "1.200.000,00", comprasInput: "0,00" }, resolve));
+    assert.ok(html.includes("Diferença zero"));
+    assert.ok(html.includes("Regime recomendado</span><strong>Empate"));
+    assert.ok(html.includes("Não há vencedor para esta simulação"));
+    assert.ok(html.includes("R$ 0,00"));
+    assert.ok(!html.includes("R$ 12.345,00"));
+  });
+
+  it("Interpretação visual Híbrido: compras elevadas mantêm CBS, DAS, total, vencedor e PDF consistentes", async () => {
+    const r = calc({ cnae: "6920-6/01", rbt12: "1.200.000,00", comprasInput: "800.000,00", salarios: "0", confirmadoBeneficioArt127: true });
+    const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(r, { cnae: "6920-6/01", rbt12Input: "1.200.000,00", comprasInput: "800.000,00", salarios: "0" }, resolve));
+    assert.ok(Math.abs(r.CBS.liquida - 3520) < 0.02);
+    assert.ok(Math.abs(r.simplesHibrido.dasReduzido - 130701.32) < 0.02);
+    assert.ok(Math.abs(r.simplesHibrido.total - 134221.32) < 0.02);
+    assert.ok(r.simplesHibrido.total < r.simplesTradicional.total);
+    assert.ok(html.includes("CBS líquida</td><td class=\"num\">R$ 3.520,00"));
+    assert.ok(html.includes("(=) DAS reduzido</td><td class=\"num\">R$ 130.701,32"));
+    assert.ok(html.includes("(=) Total Híbrido</td><td class=\"num\">R$ 134.221,32"));
+    assert.ok(html.includes("Economia anual"));
+    assert.ok(html.includes("Regime recomendado</span><strong>Simples Híbrido"));
+    assert.ok(html.includes("Simples Híbrido apresentou menor carga tributária"));
+  });
+});
+
+describe("DashboardResultadosHibrido — não recalcula Simples Nacional", () => {
+  it("não contém tabela de faixas nem fórmula própria do DAS no componente", () => {
+    assert.ok(!dashboardHibridoSource.includes("getSNParams"));
+    assert.ok(!dashboardHibridoSource.includes("calcularSN"));
+    assert.ok(!dashboardHibridoSource.includes("PARAMETROS_SIMPLES"));
+    assert.ok(!dashboardHibridoSource.includes("[180000"));
+    assert.ok(!dashboardHibridoSource.includes("35640"));
+    assert.ok(!dashboardHibridoSource.includes("648000"));
+    assert.ok(!/(?:aliqNominal|aliquota|alíquota)[\s\S]{0,80}0\.16/i.test(dashboardHibridoSource));
+    assert.ok(!/rbt\w*\s*\*\s*aliq\w*\s*-\s*dedu/i.test(dashboardHibridoSource));
+    assert.ok(!/\(\s*[^)]*aliqNominal[^)]*deducao[^)]*\)\s*\/\s*rbt/i.test(dashboardHibridoSource));
+    assert.ok(!dashboardHibridoSource.includes("conclusao.vencedor"));
+    assert.ok(!dashboardHibridoSource.includes("comparacaoFinanceira"));
   });
 });

@@ -3,24 +3,8 @@
 import { formatCurrencyBRL } from "./CurrencyInput";
 import {
   TrendingUp, TrendingDown, Scale, FileText, Receipt, ShoppingCart,
-  DollarSign, BarChart3, AlertCircle, CheckCircle2, Banknote, ArrowDown
+  DollarSign, BarChart3, AlertCircle, CheckCircle2, ArrowDown
 } from "lucide-react";
-
-// ===== DESIGN TOKENS =====
-const DS = {
-  container: "max-w-6xl w-[calc(100%-48px)] mx-auto",
-  cardPadding: "p-6",
-  cardRadius: "rounded-xl",
-  cardShadow: "shadow-sm",
-  cardBorder: "border",
-  gridGap: "gap-5",
-  fontMoney: "text-[clamp(1.75rem,2.2vw,2.5rem)] leading-tight",
-  fontMoneySm: "text-[clamp(1.5rem,2vw,2.25rem)] leading-tight",
-  fontCardTitle: "text-lg font-bold",
-  fontSectionTitle: "text-xl font-bold",
-  fontBody: "text-base",
-  fontSmall: "text-sm",
-} as const;
 
 // ===== HELPERS =====
 
@@ -62,10 +46,10 @@ const moneyFormat = new Intl.NumberFormat("pt-BR", {
 
 const sizeClasses: Record<string, string> = {
   sm: "text-base",
-  md: "text-xl",
-  lg: "text-[clamp(1.25rem,1.8vw,1.75rem)]",
-  xl: "text-[clamp(1.75rem,2.2vw,2.5rem)]",
-  xxl: "text-[clamp(2rem,2.8vw,3rem)]",
+  md: "text-lg",
+  lg: "text-[clamp(1.1rem,1.5vw,1.45rem)]",
+  xl: "text-[clamp(1.35rem,1.75vw,1.9rem)]",
+  xxl: "text-[clamp(1.55rem,2.1vw,2.25rem)]",
 };
 
 export function MoneyValue({ value, size = "xl", className = "", color = "text-slate-900" }: MoneyValueProps) {
@@ -146,6 +130,68 @@ export function HeaderComparacao({ titulo, descricao, icone }: HeaderProps) {
   );
 }
 
+// ===== BENEFIT CARD =====
+
+interface BenefitCardProps {
+  status?: "APLICADO" | "PENDENTE" | "NAO_APLICADO" | "NAO_ELEGIVEL" | string;
+  percentual?: number;
+  baseLegal?: string;
+  atividade?: string;
+  cnae?: string;
+  beneficio?: string;
+  explanation?: string;
+}
+
+export function BenefitCard({ status, percentual = 0, baseLegal, atividade, cnae, beneficio, explanation }: BenefitCardProps) {
+  const isConfirmed = status === "APLICADO";
+  const isPending = status === "PENDENTE";
+  const isDenied = status === "NAO_APLICADO";
+  const statusText = isConfirmed ? "Confirmado" : isPending ? "Pendente" : isDenied ? "Negado" : "Nao elegivel";
+  const situation = isConfirmed ? "Benefício identificado" : isPending ? "Benefício pendente de confirmação" : "Empresa sem benefício específico";
+  const tone = isConfirmed ? "emerald" : isPending ? "blue" : isDenied ? "amber" : "slate";
+  const wrapper = tone === "emerald"
+    ? "bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-300"
+    : tone === "blue"
+    ? "bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-300"
+    : tone === "amber"
+    ? "bg-gradient-to-br from-amber-50 to-orange-50 border-amber-300"
+    : "bg-gradient-to-br from-slate-50 to-white border-slate-300";
+  const iconBg = tone === "emerald" ? "bg-emerald-600" : tone === "blue" ? "bg-blue-700" : tone === "amber" ? "bg-amber-600" : "bg-slate-600";
+  const Icon = isConfirmed ? CheckCircle2 : isPending ? AlertCircle : Scale;
+
+  return (
+    <section className={`rounded-2xl border-2 p-6 shadow-sm ${wrapper}`} aria-labelledby="beneficio-reforma-title" data-testid="benefit-card">
+      <div className="flex flex-col lg:flex-row gap-5 lg:items-start lg:justify-between">
+        <div className="flex items-start gap-4 min-w-0">
+          <div className={`w-12 h-12 rounded-2xl ${iconBg} flex items-center justify-center shrink-0`}>
+            <Icon className="w-6 h-6 text-white" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-bold tracking-[0.16em] uppercase text-slate-500">Benefício da Reforma Tributária</p>
+            <h2 id="beneficio-reforma-title" className="text-2xl font-extrabold text-slate-900 mt-1">{situation}</h2>
+            <p className="text-base text-slate-700 mt-2">{explanation || "A avaliação considera o CNAE, a atividade e as respostas sobre os requisitos legais informados pelo usuário."}</p>
+          </div>
+        </div>
+        <div className="rounded-xl bg-white/80 border border-white p-4 min-w-[220px]">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Status</p>
+          <p className="text-xl font-bold text-slate-900 mt-1">{statusText}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+        <div className="rounded-xl bg-white/80 border border-white p-4"><p className="text-xs font-bold text-slate-500 uppercase">Atividade</p><p className="font-semibold text-slate-900 mt-1">{atividade || "-"}</p></div>
+        <div className="rounded-xl bg-white/80 border border-white p-4"><p className="text-xs font-bold text-slate-500 uppercase">CNAE</p><p className="font-semibold text-slate-900 mt-1">{cnae || "-"}</p></div>
+        <div className="rounded-xl bg-white/80 border border-white p-4"><p className="text-xs font-bold text-slate-500 uppercase">Benefício previsto</p><p className="font-semibold text-slate-900 mt-1">{beneficio || (percentual > 0 ? `Redução legal de ${percentual.toFixed(0)}%` : "Sem redução específica")}</p><p className="text-xs text-slate-600 mt-1">{percentual > 0 ? `${percentual.toFixed(0)}% nas alíquotas da CBS e do IBS` : "Sem benefício específico identificado"}</p></div>
+        <div className="rounded-xl bg-white/80 border border-white p-4"><p className="text-xs font-bold text-slate-500 uppercase">Base legal</p><p className="font-semibold text-slate-900 mt-1">{baseLegal || "-"}</p></div>
+      </div>
+      {percentual > 0 && (
+        <div className="mt-4 rounded-xl bg-white/70 border border-white p-4 text-sm text-slate-700">
+          <strong>Redução legal:</strong> aplicada exclusivamente às alíquotas de CBS e IBS. Não reduz IRPJ, CSLL, ISS nem reduz a carga tributária total nessa mesma proporção.
+        </div>
+      )}
+    </section>
+  );
+}
+
 // ===== CARD DE RESUMO (individual) =====
 
 interface CardResumoProps {
@@ -185,6 +231,7 @@ export function CardResumo({ titulo, total, rotuloTotal, linhas, corBorda, corFu
 
 interface CardImpactoProps {
   isAumento: boolean;
+  isEmpate?: boolean;
   valorAnual: number;
   rotulo: string;
   valorMensal: number;
@@ -202,7 +249,7 @@ export function ResumoExecutivo({ card1, card2, cardImpacto }: ResumoExecutivoPr
     <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
       <div className="flex items-center gap-2 mb-6">
         <BarChart3 className="w-6 h-6 text-blue-600 shrink-0" />
-        <h2 className="text-xl font-bold text-slate-800">Resumo Executivo</h2>
+        <h2 className="text-xl font-bold text-slate-800">Resultado Executivo</h2>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <CardResumo {...card1} />
@@ -215,22 +262,24 @@ export function ResumoExecutivo({ card1, card2, cardImpacto }: ResumoExecutivoPr
 
 // ===== CARD DE IMPACTO =====
 
-export function CardImpacto({ isAumento, valorAnual, rotulo, valorMensal, variacao, flagMenorCarga }: CardImpactoProps) {
-  const corBg = isAumento ? "bg-red-50" : "bg-emerald-50";
-  const corBorda = isAumento ? "border-red-200" : "border-emerald-200";
-  const corTexto = isAumento ? "text-red-800" : "text-emerald-800";
-  const corLabel = isAumento ? "text-red-600" : "text-emerald-600";
-  const corValor = isAumento ? "text-red-700" : "text-emerald-700";
+export function CardImpacto({ isAumento, isEmpate = false, valorAnual, rotulo, valorMensal, variacao, flagMenorCarga }: CardImpactoProps) {
+  const corBg = isEmpate ? "bg-slate-50" : isAumento ? "bg-red-50" : "bg-emerald-50";
+  const corBorda = isEmpate ? "border-slate-200" : isAumento ? "border-red-200" : "border-emerald-200";
+  const corTexto = isEmpate ? "text-slate-800" : isAumento ? "text-red-800" : "text-emerald-800";
+  const corLabel = isEmpate ? "text-slate-600" : isAumento ? "text-red-600" : "text-emerald-600";
+  const corValor = isEmpate ? "text-slate-700" : isAumento ? "text-red-700" : "text-emerald-700";
 
   return (
-    <div className={`${corBg} rounded-xl p-6 border ${corBorda} flex flex-col h-full`}>
+    <div className={`${corBg} rounded-xl p-6 border ${corBorda} flex flex-col h-full`} data-testid="impact-card" data-tone={isEmpate ? "neutral" : isAumento ? "red" : "green"}>
       <div className="flex items-center gap-2 mb-3">
-        {isAumento
+        {isEmpate
+          ? <Scale className="w-5 h-5 text-slate-500 shrink-0" />
+          : isAumento
           ? <TrendingUp className="w-5 h-5 text-red-500 shrink-0" />
           : <TrendingDown className="w-5 h-5 text-emerald-600 shrink-0" />
         }
         <h3 className={`text-lg font-bold ${corTexto}`}>
-          {isAumento ? "Aumento de Carga" : "Economia"}
+          {isEmpate ? "Empate" : isAumento ? "Aumento de Carga" : "Economia"}
         </h3>
       </div>
       <MoneyValue value={valorAnual} size="xl" color={corValor} />
@@ -259,15 +308,18 @@ export function CardImpacto({ isAumento, valorAnual, rotulo, valorMensal, variac
 
 interface ConclusaoProps {
   isAumento: boolean;
+  isEmpate?: boolean;
   texto: string;
   vencedor?: string;
   impactoAnual: number;
   impactoPct: number;
 }
-export function CardConclusao({ isAumento, texto, vencedor, impactoAnual, impactoPct }: ConclusaoProps) {
-  const corBg = isAumento ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200";
-  const badgeBg = isAumento ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800";
-  const badgeIcon = isAumento
+export function CardConclusao({ isAumento, isEmpate = false, texto, vencedor, impactoAnual, impactoPct }: ConclusaoProps) {
+  const corBg = isEmpate ? "bg-slate-50 border-slate-200" : isAumento ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200";
+  const badgeBg = isEmpate ? "bg-slate-100 text-slate-800" : isAumento ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800";
+  const badgeIcon = isEmpate
+    ? <Scale className="w-5 h-5 shrink-0" />
+    : isAumento
     ? <TrendingUp className="w-5 h-5 shrink-0" />
     : <TrendingDown className="w-5 h-5 shrink-0" />;
 
@@ -276,7 +328,7 @@ export function CardConclusao({ isAumento, texto, vencedor, impactoAnual, impact
       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
         <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-base font-bold ${badgeBg} shrink-0`}>
           {badgeIcon}
-          {isAumento ? "Aumento de carga" : "Menor carga tributária"}
+          {isEmpate ? "Empate" : isAumento ? "Aumento de carga" : "Menor carga tributária"}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-base leading-relaxed text-slate-700">{texto}</p>
@@ -314,8 +366,8 @@ interface CBSData {
   reducao?: BaseLegalInfo;
 }
 
-interface CardCBSProps { cbs: CBSData; }
-export function CardCBS({ cbs }: CardCBSProps) {
+interface CardCBSProps { cbs: CBSData; labels?: { base?: string; debito?: string }; }
+export function CardCBS({ cbs, labels }: CardCBSProps) {
   if (!cbs || !(cbs.debito || 0)) return null;
   return (
     <div className="bg-white rounded-2xl border border-cyan-200 p-6 shadow-sm">
@@ -360,7 +412,7 @@ export function CardCBS({ cbs }: CardCBSProps) {
         <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
           <div className="flex items-center gap-2 mb-3">
             <DollarSign className="w-5 h-5 text-blue-600 shrink-0" />
-            <h4 className="text-lg font-bold text-blue-800">CBS sobre Vendas</h4>
+            <h4 className="text-lg font-bold text-blue-800">{labels?.base || "CBS sobre receitas tributáveis"}</h4>
           </div>
           <div className="space-y-2">
             <Row label="Alíquota padrão" value={fmtPct(cbs.aliqPadrao ?? 0)} />
@@ -373,7 +425,7 @@ export function CardCBS({ cbs }: CardCBSProps) {
               <span className="font-bold text-xl text-blue-700 whitespace-nowrap">{fmtPct(cbs.aliq ?? 0)}</span>
             </div>
             <div className="flex justify-between items-baseline gap-4 pt-2 border-t border-blue-100">
-              <span className="text-blue-600 font-medium">Débito</span>
+              <span className="text-blue-600 font-medium">{labels?.debito || "Débito sobre receitas tributáveis"}</span>
               <span className="font-bold text-lg text-slate-800"><MoneyValue value={cbs.debito ?? 0} size="md" /></span>
             </div>
           </div>

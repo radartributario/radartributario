@@ -6,11 +6,17 @@ import type { TipoComparacao } from "./ModoSelecao";
 
 export type FormData = Record<string, string>;
 
+const MAIN_ECONOMIC_FIELDS = ["rbt12Input", "comprasInput", "anoSIM", "salarios", "prolabore"];
+const MAIN_TAX_FIELDS = ["aliquotaISS", "aliquotaICMS", "aliquotaIPI"];
+
 interface Props {
   data: FormData;
   onChange: (data: FormData) => void;
-  onGenerate: () => void;
+  onGenerate?: () => void;
   tipoComparacao?: TipoComparacao;
+  showAllFields?: boolean;
+  hideGenerate?: boolean;
+  showHybridInfo?: boolean;
 }
 
 function cnaeToTipoAtiv(cnae: string): string {
@@ -29,12 +35,6 @@ function cnaeToTipoAtiv(cnae: string): string {
   if (div >= 90 && div <= 96) return "servicos";
   return "servicos";
 }
-
-const MONETARY_FIELDS = new Set([
-  "rbt12Input", "comprasInput", "salarios", "prolabore",
-  "refCredMerc", "refCredServ", "refCredEnerg", "refCredAlug",
-  "refCredAtivo", "refCredOutras", "refCredSn", "refCredManual",
-]);
 
 interface FieldDef {
   id: string;
@@ -113,6 +113,21 @@ const FIELDS: FieldDef[] = [
   { id: "optOutPct", label: "% de opt-out do DAS", block: "tributario", defaultValue: "100", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO"] },
   { id: "aliqCbsFora", label: "Alíquota CBS fora do DAS (%)", block: "tributario", defaultValue: "8.8", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO"] },
   { id: "aliqCbsCompras", label: "Alíquota média da CBS nas aquisições (%)", block: "tributario", defaultValue: "8.8", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO"] },
+  { id: "benefReqProfissionais", label: "Sócios habilitados e registrados no conselho?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA"], options: [
+    { v: "", l: "Não respondido" }, { v: "sim", l: "Sim" }, { v: "nao", l: "Não" },
+  ]},
+  { id: "benefReqSemSocioPJ", label: "Sem pessoa jurídica como sócia?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA"], options: [
+    { v: "", l: "Não respondido" }, { v: "sim", l: "Sim" }, { v: "nao", l: "Não" },
+  ]},
+  { id: "benefReqNaoParticipaPJ", label: "Não participa de outra pessoa jurídica?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA"], options: [
+    { v: "", l: "Não respondido" }, { v: "sim", l: "Sim" }, { v: "nao", l: "Não" },
+  ]},
+  { id: "benefReqExclusiva", label: "Exerce exclusivamente atividade elegível?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA"], options: [
+    { v: "", l: "Não respondido" }, { v: "sim", l: "Sim" }, { v: "nao", l: "Não" },
+  ]},
+  { id: "benefReqDireta", label: "Serviços prestados diretamente por profissionais habilitados?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA"], options: [
+    { v: "", l: "Não respondido" }, { v: "sim", l: "Sim" }, { v: "nao", l: "Não" },
+  ]},
 ];
 
 export function defaultFormData(): FormData {
@@ -128,14 +143,20 @@ export function formatCNPJ(v: string): string {
   return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4/$5");
 }
 
-export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparacao = "SIMPLES_VS_PRESUMIDO" }: Props) {
+export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparacao = "SIMPLES_VS_PRESUMIDO", showAllFields = false, hideGenerate = false, showHybridInfo = true }: Props) {
   const [cnpjInput, setCnpjInput] = useState(data.cnpj || "");
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [cnpjError, setCnpjError] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
-  const [openSection, setOpenSection] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const set = useCallback((id: string, val: string) => onChange({ ...data, [id]: val }), [data, onChange]);
+
+  const handleCnpjChange = (value: string) => {
+    const formatted = formatCNPJ(value);
+    setCnpjInput(formatted);
+    onChange({ ...data, cnpj: formatted });
+  };
 
   const consultarCnpj = async () => {
     const clean = cnpjInput.replace(/\D/g, "");
@@ -147,7 +168,7 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
       const d = await res.json();
       if (!res.ok) { setCnpjError(d.error || "Erro ao consultar"); return; }
       const upd: FormData = { ...data };
-      upd.cnpj = cnpjInput;
+      upd.cnpj = formatCNPJ(cnpjInput);
       if (d.razao_social) upd.razao = d.razao_social;
       if (d.nome_fantasia) upd.fantasia = d.nome_fantasia;
       if (d.cnae_fiscal) {
@@ -185,13 +206,13 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
     return errs.length === 0;
   };
 
-  const handleGenerate = () => { if (validar()) onGenerate(); };
+  const handleGenerate = () => { if (validar() && onGenerate) onGenerate(); };
 
   const renderField = (f: FieldDef) => {
     const val = data[f.id] ?? "";
     if (f.type === "select" && f.options) {
       return (
-        <select value={val} onChange={e => set(f.id, e.target.value)}
+        <select id={f.id} value={val} onChange={e => set(f.id, e.target.value)}
           className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
           {f.options.map(o => (
             <option key={o.v} value={o.v}>{o.l}</option>
@@ -221,7 +242,7 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
 
   const fieldsByBlock = (block: string) => FIELDS.filter(f => {
     if (f.block !== block) return false;
-    if (f.mode && !f.mode.includes(tipoComparacao)) return false;
+    if (f.mode && !showAllFields && !f.mode.includes(tipoComparacao)) return false;
     const SUBL_FIELDS = ["receitaAnoAnterior","receitaAcumulada","mesUltrapassagem","impedimentoIssJaProduzEfeitos"];
     if (SUBL_FIELDS.includes(f.id)) {
       const rbtStr = data.rbt12Input || "";
@@ -232,41 +253,44 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
     return true;
   });
 
+  const byId = new Map(FIELDS.map(f => [f.id, f]));
+  const fieldIsVisible = (field: FieldDef | undefined): field is FieldDef => !!field && fieldsByBlock(field.block).some(f => f.id === field.id);
+  const companyFields = fieldsByBlock("empresa").filter(f => f.id !== "cnpj" && f.id !== "anoSIM");
+  const simulationFields = MAIN_ECONOMIC_FIELDS.map(id => byId.get(id)).filter(fieldIsVisible);
+  const taxFields = MAIN_TAX_FIELDS.map(id => byId.get(id)).filter(fieldIsVisible);
+  const advancedFields = [...fieldsByBlock("economico").filter(f => !MAIN_ECONOMIC_FIELDS.includes(f.id)), ...fieldsByBlock("tributario").filter(f => !MAIN_TAX_FIELDS.includes(f.id))];
+
   const buttonLabel = isHibrido
     ? "Calcular impacto da opção híbrida"
     : isReforma
     ? "Analisar impacto da Reforma Tributária"
     : "Gerar diagnóstico tributário";
 
-  return (
-    <div className="space-y-6">
+    return (
+      <div className="space-y-8">
       {errors.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-1">
           {errors.map((e, i) => <p key={i} className="text-sm text-red-600">&#9888; {e}</p>)}
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <h3 className="text-base font-semibold text-slate-800 mb-1">Consultar CNPJ</h3>
-        <p className="text-xs text-slate-500 mb-3">Preencha automaticamente os dados da empresa na Receita Federal.</p>
-        <div className="flex gap-3">
-          <input type="text" value={cnpjInput} onChange={e => setCnpjInput(formatCNPJ(e.target.value))}
+      <div className="rounded-3xl border border-blue-200 bg-[#EEF5FF] p-6 shadow-md shadow-slate-900/10">
+        <h2 className="text-xl font-extrabold uppercase tracking-wide text-slate-950 mb-1">🏢 Identificação da Empresa</h2>
+        <p className="text-xs text-slate-500 mb-3">Consulte o CNPJ para preencher automaticamente os dados cadastrais.</p>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <input id="cnpj" type="text" value={cnpjInput} onChange={e => handleCnpjChange(e.target.value)}
             placeholder="00.000.000/0000-00" maxLength={18}
-            className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           <button onClick={consultarCnpj} disabled={cnpjLoading}
-            className="bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+            className="flex items-center justify-center gap-2 rounded-2xl bg-blue-700 px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:-translate-y-0.5 hover:bg-blue-800 hover:shadow-xl hover:shadow-blue-900/25 disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none">
             {cnpjLoading ? (
               <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Consultando...</>
             ) : "Consultar"}
           </button>
         </div>
         {cnpjError && <p className="mt-2 text-sm text-red-600">{cnpjError}</p>}
-      </div>
-
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <h3 className="text-base font-semibold text-slate-800 mb-4">Dados da Empresa</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {fieldsByBlock("empresa").map(f => (
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {companyFields.map(f => (
             <div key={f.id} className={f.fullWidth ? "sm:col-span-2 lg:col-span-2" : ""}>
               <label className="block text-xs font-medium text-slate-500 mb-1">{f.label}</label>
               {renderField(f)}
@@ -275,16 +299,35 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <button onClick={() => setOpenSection(openSection === "economico" ? null : "economico")}
-          className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors">
-          <h3 className="text-base font-semibold text-slate-800">Dados Econômicos</h3>
-          <span className={`text-slate-400 transition-transform ${openSection === "economico" ? "rotate-180" : ""}`}>▼</span>
+      <div className="rounded-3xl border border-slate-200 bg-[#F5F8FC] p-6 shadow-md shadow-slate-900/10">
+        <h3 className="text-base font-extrabold text-slate-950 mb-4">💰 Dados da Simulação</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {simulationFields.map(f => (
+            <div key={f.id}>
+              <label className="block text-xs font-medium text-slate-500 mb-1">{f.label}</label>
+              {renderField(f)}
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {taxFields.map(f => (
+            <div key={f.id}>
+              <label className="block text-xs font-medium text-slate-500 mb-1">{f.label}</label>
+              {renderField(f)}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-3xl border border-slate-300 bg-white shadow-md shadow-slate-900/10">
+        <button type="button" onClick={() => setAdvancedOpen(value => !value)} className="w-full flex items-center justify-between px-6 py-5 text-left hover:bg-slate-50 transition-colors">
+          <span className="text-base font-extrabold text-slate-950">⚙️ Ajustes Avançados</span>
+          <span className={`text-slate-400 transition-transform ${advancedOpen ? "rotate-180" : ""}`}>▼</span>
         </button>
-        {openSection === "economico" && (
-          <div className="px-5 pb-5">
+        {advancedOpen && (
+          <div className="border-t border-slate-100 px-5 pb-5 pt-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {fieldsByBlock("economico").map(f => (
+              {advancedFields.map(f => (
                 <div key={f.id}>
                   <label className="block text-xs font-medium text-slate-500 mb-1">{f.label}</label>
                   {renderField(f)}
@@ -295,27 +338,7 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <button onClick={() => setOpenSection(openSection === "tributario" ? null : "tributario")}
-          className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors">
-          <h3 className="text-base font-semibold text-slate-800">Parâmetros Tributários</h3>
-          <span className={`text-slate-400 transition-transform ${openSection === "tributario" ? "rotate-180" : ""}`}>▼</span>
-        </button>
-        {openSection === "tributario" && (
-          <div className="px-5 pb-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {fieldsByBlock("tributario").map(f => (
-                <div key={f.id}>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">{f.label}</label>
-                  {renderField(f)}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {isHibrido && (
+      {isHibrido && showHybridInfo && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
           <strong className="font-semibold">Simulação Híbrida</strong>
           <p className="mt-1 text-amber-700">
@@ -325,10 +348,10 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
         </div>
       )}
 
-      <button onClick={handleGenerate}
+      {!hideGenerate && <button onClick={handleGenerate}
         className="w-full bg-blue-700 hover:bg-blue-800 text-white py-3.5 rounded-xl text-base font-semibold transition-colors">
         {buttonLabel}
-      </button>
+      </button>}
     </div>
   );
 }
