@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/react";
 
 const description =
   "Simule e compare regimes tributários em segundos. Compare Simples Nacional, Lucro Presumido, Reforma Tributária e Simples Híbrido com memória de cálculo completa e relatórios profissionais.";
@@ -39,7 +40,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">{children}<Analytics /></body>
     </html>
   );
 }
