@@ -87,7 +87,7 @@ describe("Motor Híbrido — Simples tradicional × Simples híbrido", () => {
     dasAnual: 144000,    // 12% efetiva
     anexo: "Anexo III",
     optOutPct: 1,        // 100% opt-out
-    aliqCbsFora: 0.088, // 8.8%
+    aliqCbsFora: 0.0921, // 9.21%
     encargosFora: 6000,
     snTotalTrad: 150000,
   };

@@ -316,22 +316,22 @@ describe("ICMS — débito, crédito e líquido", () => {
 });
 
 describe("CBS — bruta, credito e liquida", () => {
-  it("Receita 5M, aliq 8.8%, sem credito -> CBS 440k", () => {
-    const receita = 5000000, aliq = 0.088, credito = 0;
+  it("Receita 5M, aliq 9.21%, sem credito -> CBS 460.5k", () => {
+    const receita = 5000000, aliq = 0.0921, credito = 0;
     const bruta = receita * aliq;
     const liquida = Math.max(0, bruta - credito);
-    assert.strictEqual(bruta, 440000);
-    assert.strictEqual(liquida, 440000);
+    assert.strictEqual(bruta, 460500);
+    assert.strictEqual(liquida, 460500);
   });
 
-  it("Receita 5M, aliq 8.8%, credito 264k -> CBS 176k", () => {
-    const receita = 5000000, aliq = 0.088, credito = 264000;
+  it("Receita 5M, aliq 9.21%, credito 264k -> CBS 196.5k", () => {
+    const receita = 5000000, aliq = 0.0921, credito = 264000;
     const liquida = Math.max(0, receita * aliq - credito);
-    assert.strictEqual(liquida, 176000);
+    assert.strictEqual(liquida, 196500);
   });
 
   it("Credito superior -> CBS = 0", () => {
-    const receita = 1000000, aliq = 0.088, credito = 500000;
+    const receita = 1000000, aliq = 0.0921, credito = 500000;
     const liquida = Math.max(0, receita * aliq - credito);
     assert.strictEqual(liquida, 0);
   });
@@ -412,10 +412,10 @@ describe("CBS Premissas (sem credito como compras)", () => {
     const cbsComprasVal = 500000;
     const cbsPctCred = 100;
     const cbsBaseCred = cbsComprasVal * (cbsPctCred / 100);
-    const aliqCbs = 0.088;
+    const aliqCbs = 0.0921;
     const cbsCredCalc = cbsBaseCred * aliqCbs;
     assert.strictEqual(cbsComprasVal, 500000);
     assert.strictEqual(cbsBaseCred, 500000);
-    assert.strictEqual(cbsCredCalc, 44000);
+    assert.strictEqual(cbsCredCalc, 46050);
   });
 });

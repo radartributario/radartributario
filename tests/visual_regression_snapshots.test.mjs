@@ -53,8 +53,8 @@ describe("Regressao visual estrutural - snapshots comerciais", () => {
       cards: {
         modulo: "SIMPLES_TRADICIONAL_VS_HIBRIDO",
         tradicional: { total: 198700, das: 198700, aliquota: 9.94 },
-        hibrido: { total: 271693.33, dasReduzido: 166093.33, cbsLiquida: 105600, ibsLiquido: 0 },
-        decisao: { vencedor: "Simples tradicional", tipo: "AUMENTO", valor: 72993.33 },
+        hibrido: { total: 276613.33, dasReduzido: 166093.33, cbsLiquida: 110520, ibsLiquido: 0 },
+        decisao: { vencedor: "Simples tradicional", tipo: "AUMENTO", valor: 77913.33 },
       },
       secoesPdf: { resultadoExecutivo: true, memoriaCalculo: true, conclusao: true, cardTradicional: true, cardHibrido: true },
     });
@@ -78,10 +78,10 @@ describe("Regressao visual estrutural - snapshots comerciais", () => {
       cards: {
         modulo: "PRESUMIDO_ATUAL_VS_REFORMA",
         atual: { total: 344600, pisCofins: 73000, ipi: 0 },
-        cbs: { debito: 176000, credito: 70400, liquida: 105600, aliq: 8.8 },
+        cbs: { debito: 184200, credito: 73680, liquida: 110520, aliq: 9.21 },
         ibs: { debito: 2000, credito: 800, liquido: 1200, aliq: 0.1 },
-        futuro: { total: 378400, aliquota: 18.92 },
-        decisao: { tipo: "AUMENTO", valor: 33800 },
+        futuro: { total: 383320, aliquota: 19.17 },
+        decisao: { tipo: "AUMENTO", valor: 38720 },
       },
       secoesPdf: { resultadoExecutivo: true, memoria: true, lpAtual: true, reforma: true, cbs: true, ibs: true },
     });

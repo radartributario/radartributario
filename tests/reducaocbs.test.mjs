@@ -54,7 +54,7 @@ function fd(overrides = {}) {
     rbt12: overrides.rbt12 ?? 1200000,
     cnae: overrides.cnae ?? "6920601",
     optOutPct: "100",
-    aliqCbsFora: "8.8",
+    aliqCbsFora: "9.21",
     credCbsPct: "50",
     comprasInput: "0",
     salarios: "0",
@@ -211,7 +211,7 @@ describe("getBeneficioCNAE()", () => {
 // TESTS: getCbsAliqEfetiva (com e sem confirmação condicional)
 // ==========================
 describe("getCbsAliqEfetiva()", () => {
-  const aliqPadrao = 0.088;
+  const aliqPadrao = 0.0921;
 
   it("CNAE 6920601 SEM confirmação → alíquota padrão (sem redução)", () => {
     const r = engine.getCbsAliqEfetiva("6920601", aliqPadrao, false);
@@ -219,18 +219,18 @@ describe("getCbsAliqEfetiva()", () => {
     assert.strictEqual(r.reducao, null, "reducao deve ser null sem confirmação");
   });
 
-  it("CNAE 6920601 COM confirmação → alíquota reduzida 6,16% (8,8% * 0,7)", () => {
+  it("CNAE 6920601 COM confirmação → alíquota reduzida 6,447% (9.21% * 0,7)", () => {
     const r = engine.getCbsAliqEfetiva("6920601", aliqPadrao, true);
-    assert.ok(Math.abs(r.aliqEfetiva - 0.0616) < 0.0001, `esperado ~0.0616, obtido ${r.aliqEfetiva}`);
+    assert.ok(Math.abs(r.aliqEfetiva - 0.06447) < 0.0001, `esperado ~0.06447, obtido ${r.aliqEfetiva}`);
     assert.ok(r.reducao, "deve ter reducao");
     assert.strictEqual(r.reducao.pct, 0.30);
   });
 
-  it("CNAE 8610100 (hospital, não condicional) → alíquota reduzida 3,52% independente de confirmação", () => {
+  it("CNAE 8610100 (hospital, não condicional) → alíquota reduzida 3,684% independente de confirmação", () => {
     const r1 = engine.getCbsAliqEfetiva("8610100", aliqPadrao, false);
     const r2 = engine.getCbsAliqEfetiva("8610100", aliqPadrao, true);
     assert.strictEqual(r1.aliqEfetiva, r2.aliqEfetiva, "deve ser igual com ou sem confirmação");
-    assert.ok(Math.abs(r1.aliqEfetiva - 0.0352) < 0.0001, `esperado ~0.0352, obtido ${r1.aliqEfetiva}`);
+    assert.ok(Math.abs(r1.aliqEfetiva - 0.03684) < 0.0001, `esperado ~0.03684, obtido ${r1.aliqEfetiva}`);
   });
 
   it("CNAE sem benefício → alíquota padrão", () => {
@@ -262,7 +262,7 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
       optOutPct: data.optOutPct,
       anoSIM: data.anoSIM,
       aliqCbsFora: data.aliqCbsFora,
-      aliqCbsCompras: data.aliqCbsCompras ?? "8.8",
+      aliqCbsCompras: data.aliqCbsCompras ?? "9.21",
       credCbsPct: data.credCbsPct,
       confirmadoBeneficioArt127: data.confirmadoBeneficioArt127 ?? false,
       benefReqProfissionais: data.benefReqProfissionais,
@@ -274,64 +274,64 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
     return engine.calcularComparacaoSimplesHibrido(formData);
   }
 
-  it("CNAE 6920601 SEM confirmação → alíquota CBS = 8.80% (padrão)", () => {
+  it("CNAE 6920601 SEM confirmação → alíquota CBS = 9.21% (padrão)", () => {
     const r = calc({ cnae: "6920601", confirmadoBeneficioArt127: false });
-    assert.strictEqual(r.CBS.aliqPadrao, 8.8, "aliqPadrao deve ser 8.80%");
-    assert.strictEqual(r.CBS.aliq, 8.8, "aliq efetiva = padrão sem confirmação");
+    assert.strictEqual(r.CBS.aliqPadrao, 9.21, "aliqPadrao deve ser 9.21%");
+    assert.strictEqual(r.CBS.aliq, 9.21, "aliq efetiva = padrão sem confirmação");
     assert.strictEqual(r.CBS.reducao, null, "reducao null sem confirmação");
   });
 
-  it("CNAE 6920601 COM confirmação → alíquota CBS = 6.16% (8.8% * 0.7)", () => {
+  it("CNAE 6920601 COM confirmação → alíquota CBS = 6,447% (9.21% * 0.7)", () => {
     const r = calc({ cnae: "6920601", confirmadoBeneficioArt127: true });
-    assert.strictEqual(r.CBS.aliqPadrao, 8.8, "aliqPadrao deve ser 8.80%");
-    assert.ok(Math.abs(r.CBS.aliq - 6.16) < 0.01, `aliq efetiva ~6.16%, obtido ${r.CBS.aliq}`);
+    assert.strictEqual(r.CBS.aliqPadrao, 9.21, "aliqPadrao deve ser 9.21%");
+    assert.ok(Math.abs(r.CBS.aliq - 6.447) < 0.01, `aliq efetiva ~6,447%, obtido ${r.CBS.aliq}`);
     assert.ok(r.CBS.reducao, "deve ter reducao");
     assert.strictEqual(r.CBS.reducao.pct, 30, "pct deve ser 30");
     assert.strictEqual(r.CBS.reducao.artigo, 127, "artigo 127");
     assert.ok(r.CBS.reducao.condicional, "deve ser condicional");
   });
 
-  it("CNAE 8610100 (hospital) → alíquota CBS = 3.52% (8.8% * 0.4), incondicional", () => {
+  it("CNAE 8610100 (hospital) → alíquota CBS = 3,684% (9.21% * 0.4), incondicional", () => {
     const r = calc({ cnae: "8610100" });
-    assert.strictEqual(r.CBS.aliqPadrao, 8.8);
-    assert.ok(Math.abs(r.CBS.aliq - 3.52) < 0.01, `aliq efetiva ~3.52%, obtido ${r.CBS.aliq}`);
+    assert.strictEqual(r.CBS.aliqPadrao, 9.21);
+    assert.ok(Math.abs(r.CBS.aliq - 3.684) < 0.01, `aliq efetiva ~3,684%, obtido ${r.CBS.aliq}`);
     assert.ok(r.CBS.reducao, "deve ter reducao");
     assert.strictEqual(r.CBS.reducao.pct, 60, "pct deve ser 60");
     assert.strictEqual(r.CBS.reducao.artigo, 130, "artigo 130");
     assert.ok(!r.CBS.reducao.condicional, "não deve ser condicional");
   });
 
-  it("CNAE 4711100 (comércio) → sem redução, alíquota 8.80%", () => {
+  it("CNAE 4711100 (comércio) → sem redução, alíquota 9.21%", () => {
     const r = calc({ cnae: "4711100" });
     assert.strictEqual(r.CBS.reducao, null);
-    assert.strictEqual(r.CBS.aliq, 8.8);
+    assert.strictEqual(r.CBS.aliq, 9.21);
   });
 
-  it("CNAE 6201500 (TI) → sem redução, alíquota 8.80%", () => {
+  it("CNAE 6201500 (TI) → sem redução, alíquota 9.21%", () => {
     const r = calc({ cnae: "6201500" });
     assert.strictEqual(r.CBS.reducao, null);
-    assert.strictEqual(r.CBS.aliq, 8.8);
+    assert.strictEqual(r.CBS.aliq, 9.21);
   });
 
   it("CBS crédito usa alíquota própria das compras (separada da alíquota das vendas)", () => {
     // CNAE contabilidade (Anexo IV), R$ 1.2M receita, R$ 200K compras
-    // Vendas: 6.16% (8.8% * 0.7) com confirmação do Art. 127
-    // Compras: 8.80% (padrão)
+    // Vendas: 6,447% (9.21% * 0.7) com confirmação do Art. 127
+    // Compras: 9.21% (padrão)
     const r = calc({
       cnae: "6920601",
       confirmadoBeneficioArt127: true,
       comprasInput: "200000"
     });
     // CBS vendas
-    assert.strictEqual(r.CBS.aliqPadrao, 8.8, "aliqPadrao deve ser 8.80%");
-    assert.ok(Math.abs(r.CBS.aliq - 6.16) < 0.01, `aliq vendas ~6.16%, obtido ${r.CBS.aliq}`);
-    assert.strictEqual(r.CBS.aliqCompras, 8.8, "aliq compras deve ser 8.80%");
-    // Débito: 1.200.000 × 6.16% = 73.920
-    assert.ok(Math.abs(r.CBS.debito - 73920) < 10, `débito ~73920, obtido ${r.CBS.debito}`);
-    // Crédito: 200.000 × 8.80% = 17.600
-    assert.ok(Math.abs(r.CBS.credito - 17600) < 10, `crédito ~17600, obtido ${r.CBS.credito}`);
-    // CBS líquida: 73.920 - 17.600 = 56.320
-    assert.ok(Math.abs(r.CBS.liquida - 56320) < 10, `CBS líquida ~56320, obtido ${r.CBS.liquida}`);
+    assert.strictEqual(r.CBS.aliqPadrao, 9.21, "aliqPadrao deve ser 9.21%");
+    assert.ok(Math.abs(r.CBS.aliq - 6.447) < 0.01, `aliq vendas ~6,447%, obtido ${r.CBS.aliq}`);
+    assert.strictEqual(r.CBS.aliqCompras, 9.21, "aliq compras deve ser 9.21%");
+    // Débito: 1.200.000 × 6,447% = 77.364
+    assert.ok(Math.abs(r.CBS.debito - 77364) < 10, `débito ~77364, obtido ${r.CBS.debito}`);
+    // Crédito: 200.000 × 9.21% = 18.420
+    assert.ok(Math.abs(r.CBS.credito - 18420) < 10, `crédito ~18420, obtido ${r.CBS.credito}`);
+    // CBS líquida: 77.364 - 18.420 = 58.944
+    assert.ok(Math.abs(r.CBS.liquida - 58944) < 10, `CBS líquida ~58944, obtido ${r.CBS.liquida}`);
     // aliqCompras deve ser diferente de aliq (comprova independência)
     assert.notStrictEqual(r.CBS.aliqCompras, r.CBS.aliq, "aliqCompras deve ser diferente da aliq vendas");
   });
@@ -343,23 +343,23 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
       confirmadoBeneficioArt127: true,
       comprasInput: "0"
     });
-    // Com compras: crédito deve usar aliqCompras (8.80%), NÃO aliq vendas (6.16%)
+    // Com compras: crédito deve usar aliqCompras (9.21%), NÃO aliq vendas (6,447%)
     const rComCompra = calc({
       cnae: "6920601",
       confirmadoBeneficioArt127: true,
       comprasInput: "200000"
     });
-    // Se crédito usasse aliq vendas (6.16%): credito = 200000 * 0.0616 = 12.320
-    // Se crédito usa aliq compras (8.80%):  credito = 200000 * 0.088 = 17.600
-    // 17.600 ≠ 12.320 → comprova independência
-    assert.ok(Math.abs(rComCompra.CBS.credito - 17600) < 10,
-      `crédito deve ser 17600 (aliq compras), obtido ${rComCompra.CBS.credito} — se fosse 12320 estaria usando aliq vendas`);
+    // Se crédito usasse aliq vendas (6,447%): credito = 200000 * 0.06447 = 12.894
+    // Se crédito usa aliq compras (9.21%):  credito = 200000 * 0.0921 = 18.420
+    // 18.420 ≠ 12.894 → comprova independência
+    assert.ok(Math.abs(rComCompra.CBS.credito - 18420) < 10,
+      `crédito deve ser 18420 (aliq compras), obtido ${rComCompra.CBS.credito} — se fosse 12894 estaria usando aliq vendas`);
     // Verificar que o débito NÃO mudou com a presença de compras
     assert.ok(Math.abs(rComCompra.CBS.debito - rSemCompra.CBS.debito) < 1,
       "débito não deve mudar com compras");
   });
 
-  it("Cenário contábil confirmado fecha em CBS 6,16% e total híbrido R$ 187.021,32", () => {
+  it("Cenário contábil confirmado fecha em CBS 6,447% e total híbrido R$ 189.645,32", () => {
     const r = calc({
       cnae: "6920-6/01",
       rbt12: "1.200.000,00",
@@ -370,24 +370,24 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
     assert.strictEqual(r.premissas.parametrosHibrido2027.versao, "simples-hibrido-2027-ibs-off-1");
     assert.strictEqual(r.simplesTradicional.anexo, "Anexo III");
     assert.ok(Math.abs(r.simplesTradicional.total - 156360) < 0.02);
-    assert.strictEqual(r.CBS.aliqPadrao, 8.8);
-    assert.ok(Math.abs(r.CBS.aliq - 6.16) < 0.01);
-    assert.ok(Math.abs(r.CBS.debito - 73920) < 0.02);
-    assert.ok(Math.abs(r.CBS.credito - 17600) < 0.02);
-    assert.ok(Math.abs(r.CBS.liquida - 56320) < 0.02);
+    assert.strictEqual(r.CBS.aliqPadrao, 9.21);
+    assert.ok(Math.abs(r.CBS.aliq - 6.447) < 0.01);
+    assert.ok(Math.abs(r.CBS.debito - 77364) < 0.02);
+    assert.ok(Math.abs(r.CBS.credito - 18420) < 0.02);
+    assert.ok(Math.abs(r.CBS.liquida - 58944) < 0.02);
     assert.ok(Math.abs(r.simplesHibrido.dasReduzido - moeda(r.simplesHibrido.dasIntegral - r.simplesHibrido.parcelaCbsRetiradaDoDas)) < 0.02);
     assert.ok(Math.abs(r.simplesHibrido.parcelaCbsRetiradaDoDas - 25658.68) < 0.02);
     assert.strictEqual(r.simplesHibrido.parcelaIbsRetiradaDoDas, 0);
     assert.ok(Math.abs(r.simplesHibrido.dasReduzido - 130701.32) < 0.02);
-    assert.ok(Math.abs(r.simplesHibrido.total - 187021.32) < 0.02);
+    assert.ok(Math.abs(r.simplesHibrido.total - 189645.32) < 0.02);
     assert.strictEqual(moeda(r.simplesHibrido.total), moeda(r.simplesHibrido.dasReduzido + r.CBS.liquida));
     assert.strictEqual(r.simplesHibrido.ibsLiquido, 0);
     assert.strictEqual(moeda(r.simplesHibrido.total), moeda(r.simplesHibrido.dasReduzido + r.CBS.liquida + r.simplesHibrido.ibsLiquido));
-    assert.ok(Math.abs(r.comparacaoFinanceira.valorAnual - 30661.32) < 0.02);
-    assert.ok(Math.abs(r.comparacaoFinanceira.percentual - 19.61) < 0.02);
+    assert.ok(Math.abs(r.comparacaoFinanceira.valorAnual - 33285.32) < 0.02);
+    assert.ok(Math.abs(r.comparacaoFinanceira.percentual - 21.28) < 0.02);
     assert.ok(Math.abs(r.simplesTradicional.aliquota - 13.03) < 0.01);
-    assert.ok(Math.abs(r.simplesHibrido.aliquota - 15.59) < 0.01);
-    assert.ok(Math.abs(r.simplesHibrido.media - 15585.11) < 0.02);
+    assert.ok(Math.abs(r.simplesHibrido.aliquota - 15.80) < 0.01);
+    assert.ok(Math.abs(r.simplesHibrido.media - 15803.78) < 0.02);
     assert.strictEqual(r.premissas.cbsNomenclatura.base, "CBS sobre prestação de serviços");
     assert.strictEqual(r.premissas.cbsNomenclatura.debito, "Débito sobre serviços");
     assert.strictEqual(r.cenariosBeneficio, null);
@@ -442,7 +442,7 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
     }
   });
 
-  it("Cenário contábil não confirmado mantém CBS 8,80% e total híbrido R$ 218.701,32", () => {
+  it("Cenário contábil não confirmado mantém CBS 9.21% e total híbrido R$ 222.801,32", () => {
     const r = calc({
       cnae: "6920-6/01",
       rbt12: "1.200.000,00",
@@ -451,25 +451,25 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
       confirmadoBeneficioArt127: "nao",
     });
     assert.strictEqual(r.premissas.beneficioProfissional.status, "NAO_APLICADO");
-    assert.strictEqual(r.CBS.aliq, 8.8);
+    assert.strictEqual(r.CBS.aliq, 9.21);
     assert.strictEqual(r.CBS.reducao, null);
-    assert.ok(Math.abs(r.CBS.liquida - 88000) < 0.02);
-    assert.ok(Math.abs(r.simplesHibrido.total - 218701.32) < 0.02);
+    assert.ok(Math.abs(r.CBS.liquida - 92100) < 0.02);
+    assert.ok(Math.abs(r.simplesHibrido.total - 222801.32) < 0.02);
   });
 
   it("Cenário contábil sem resposta apresenta os dois resultados", () => {
     const r = engine.calcularComparacaoSimplesHibrido({
       rbt12Input: "1.200.000,00", comprasInput: "200.000,00", salarios: "50000", prolabore: "0",
       inss: "20", rat: "3", terceiros: "3.3", fgts: "8", aliquotaISS: "2.5", aliquotaICMS: "0",
-      tipoAtivLP: "servicos", cnae: "6920-6/01", optOutPct: "100", anoSIM: "2027", aliqCbsFora: "8.8", aliqCbsCompras: "8.8"
+      tipoAtivLP: "servicos", cnae: "6920-6/01", optOutPct: "100", anoSIM: "2027", aliqCbsFora: "9.21", aliqCbsCompras: "9.21"
     });
     assert.strictEqual(r.premissas.beneficioProfissional.status, "PENDENTE");
     assert.strictEqual(r.conclusao.vencedor, "Resultado condicionado");
     assert.strictEqual(r.conclusao.tipoImpacto, "CONDICIONADO");
     assert.ok(r.cenariosBeneficio?.comBeneficioConfirmado);
     assert.ok(r.cenariosBeneficio?.semBeneficioConfirmado);
-    assert.ok(Math.abs(r.cenariosBeneficio.comBeneficioConfirmado.simplesHibrido.total - 187021.32) < 0.02);
-    assert.ok(Math.abs(r.cenariosBeneficio.semBeneficioConfirmado.simplesHibrido.total - 218701.32) < 0.02);
+    assert.ok(Math.abs(r.cenariosBeneficio.comBeneficioConfirmado.simplesHibrido.total - 189645.32) < 0.02);
+    assert.ok(Math.abs(r.cenariosBeneficio.semBeneficioConfirmado.simplesHibrido.total - 222801.32) < 0.02);
   });
 
   it("Confirmação pelos cinco requisitos legais aplica o benefício", () => {
@@ -479,14 +479,14 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
       benefReqProfissionais: "sim", benefReqSemSocioPJ: "sim", benefReqNaoParticipaPJ: "sim", benefReqExclusiva: "sim", benefReqDireta: "sim",
     });
     assert.strictEqual(r.premissas.beneficioProfissional.status, "APLICADO");
-    assert.ok(Math.abs(r.CBS.aliq - 6.16) < 0.01);
+    assert.ok(Math.abs(r.CBS.aliq - 6.447) < 0.01);
   });
 
   it("Compras zero zeram o crédito sem alterar o débito reduzido", () => {
     const r = calc({ cnae: "6920-6/01", rbt12: "1.200.000,00", comprasInput: "0", salarios: "50000", confirmadoBeneficioArt127: true });
-    assert.ok(Math.abs(r.CBS.debito - 73920) < 0.02);
+    assert.ok(Math.abs(r.CBS.debito - 77364) < 0.02);
     assert.strictEqual(r.CBS.credito, 0);
-    assert.ok(Math.abs(r.CBS.liquida - 73920) < 0.02);
+    assert.ok(Math.abs(r.CBS.liquida - 77364) < 0.02);
   });
 
   it("Detalhamento completo do Simples Tradicional, DAS ajustado e IBS zerado é retornado", () => {
@@ -518,10 +518,10 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
     assert.ok(html.includes("Permanece recolhido dentro do DAS nesta premissa do simulador"));
     assert.ok(html.includes("Simples Tradicional"));
     assert.ok(html.includes("Simples Híbrido"));
-    assert.ok(html.includes("R$ 56.320,00"));
-    assert.ok(html.includes("R$ 187.021,32"));
-    assert.ok(html.includes("15,59%"));
-    assert.ok(html.includes("R$ 2.555,11"));
+    assert.ok(html.includes("R$ 58.944,00"));
+    assert.ok(html.includes("R$ 189.645,32"));
+    assert.ok(html.includes("15,80%"));
+    assert.ok(html.includes("R$ 2.773,78"));
     assert.ok(html.includes("Receita tributável"));
     assert.ok(html.includes("Compras com crédito"));
     assert.ok(!html.includes("DAS reduzido + CBS líquida + IBS"));
@@ -529,7 +529,7 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
     assert.ok(html.includes("Anexo III"));
     assert.ok(!html.includes("R$ 228.900,00"));
     assert.ok(!html.includes("R$ 88.000,00"));
-    assert.ok(!html.includes("R$ 218.701,32"));
+    assert.ok(!html.includes("R$ 222.801,32"));
     assert.ok(!html.includes("Híbrido sem benefício"));
     assert.ok(!html.toLowerCase().includes("pendente"));
     assert.ok(!html.includes("Status"));
@@ -539,14 +539,14 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
     const r = engine.calcularComparacaoSimplesHibrido({
       rbt12Input: "1.200.000,00", comprasInput: "200.000,00", salarios: "0", prolabore: "0",
       inss: "20", rat: "3", terceiros: "3.3", fgts: "8", aliquotaISS: "2.5", aliquotaICMS: "0",
-      tipoAtivLP: "servicos", cnae: "6920-6/01", optOutPct: "100", anoSIM: "2027", aliqCbsFora: "8.8", aliqCbsCompras: "8.8"
+      tipoAtivLP: "servicos", cnae: "6920-6/01", optOutPct: "100", anoSIM: "2027", aliqCbsFora: "9.21", aliqCbsCompras: "9.21"
     });
     const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(r, { cnae: "6920-6/01", atividade: "Serviços contábeis", rbt12Input: "1.200.000,00", comprasInput: "200.000,00", salarios: "0" }, resolve));
     assert.ok(html.includes("Benefício Fiscal"));
     assert.ok(html.includes("Simples Tradicional") && (html.includes("A carga tributária passará") || html.includes("Não há vencedor")));
     assert.ok(html.includes("Simples Híbrido"));
-    assert.ok(html.includes("R$ 187.021,32"));
-    assert.ok(!html.includes("R$ 218.701,32"));
+    assert.ok(html.includes("R$ 189.645,32"));
+    assert.ok(!html.includes("R$ 222.801,32"));
     assert.ok(html.includes("Carga Atual"));
     assert.ok(html.includes("Nova Carga"));
     assert.ok(!html.includes("R$ 228.900,00"));
@@ -560,7 +560,7 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
     const r = calc({ cnae: "6920-6/01", rbt12: "1.200.000,00", comprasInput: "200.000,00", salarios: "0", confirmadoBeneficioArt127: true });
     const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(r, { cnae: "6920-6/01", rbt12Input: "1.200.000,00", comprasInput: "200.000,00", salarios: "0" }, resolve));
     assert.ok(Math.abs(r.simplesTradicional.total - 156360) < 0.02);
-    assert.ok(Math.abs(r.simplesHibrido.total - 187021.32) < 0.02);
+    assert.ok(Math.abs(r.simplesHibrido.total - 189645.32) < 0.02);
     assert.ok(html.includes("Aumento de carga"));
     assert.ok(html.includes("Regime recomendado</span><strong>Simples Tradicional"));
     assert.ok(html.includes("A carga tributária passará") || html.includes("A carga tributária será reduzida") || html.includes("pontos percentuais"));
@@ -570,8 +570,8 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
     const r = {
       tipoComparacao: "SIMPLES_TRADICIONAL_VS_HIBRIDO",
       simplesTradicional: { total: 156360, aliquota: 13.03, das: 156360, anexo: "Anexo III", rbt12: 1200000 },
-      simplesHibrido: { total: 134221.32, aliquota: 11.19, dasIntegral: 156360, parcelaCbsRetiradaDoDas: 25658.68, dasReduzido: 102221.32 },
-      CBS: { liquida: 32000, aliq: 6.16, aliqCompras: 8.8, debito: 73920, credito: 41920 },
+      simplesHibrido: { total: 134385.32, aliquota: 11.19, dasIntegral: 156360, parcelaCbsRetiradaDoDas: 25658.68, dasReduzido: 102221.32 },
+      CBS: { liquida: 32000, aliq: 6.447, aliqCompras: 9.21, debito: 77364, credito: 41920 },
       premissas: { compras: 476363.64, anexo: "Anexo III", beneficioProfissional: { potencial: true, pctReducao: 30, baseLegal: "LC 214/2025" } },
       detalhamento: { simplesTradicional: [] },
       conclusao: { vencedor: "Simples Tradicional" },
@@ -589,7 +589,7 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
       tipoComparacao: "SIMPLES_TRADICIONAL_VS_HIBRIDO",
       simplesTradicional: { total: 150000, aliquota: 12.5, das: 150000, anexo: "Anexo III", rbt12: 1200000 },
       simplesHibrido: { total: 150000, aliquota: 12.5, dasIntegral: 150000, parcelaCbsRetiradaDoDas: 0, dasReduzido: 150000 },
-      CBS: { liquida: 0, aliq: 8.8, aliqCompras: 8.8, debito: 0, credito: 0 },
+      CBS: { liquida: 0, aliq: 9.21, aliqCompras: 9.21, debito: 0, credito: 0 },
       premissas: { compras: 0, anexo: "Anexo III" },
       detalhamento: { simplesTradicional: [] },
       conclusao: { vencedor: "Simples Tradicional" },
@@ -606,13 +606,13 @@ describe("Integração com calcularComparacaoSimplesHibrido", () => {
   it("Interpretação visual Híbrido: compras elevadas mantêm CBS, DAS, total, vencedor e PDF consistentes", async () => {
     const r = calc({ cnae: "6920-6/01", rbt12: "1.200.000,00", comprasInput: "800.000,00", salarios: "0", confirmadoBeneficioArt127: true });
     const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(r, { cnae: "6920-6/01", rbt12Input: "1.200.000,00", comprasInput: "800.000,00", salarios: "0" }, resolve));
-    assert.ok(Math.abs(r.CBS.liquida - 3520) < 0.02);
+    assert.ok(Math.abs(r.CBS.liquida - 3684) < 0.02);
     assert.ok(Math.abs(r.simplesHibrido.dasReduzido - 130701.32) < 0.02);
-    assert.ok(Math.abs(r.simplesHibrido.total - 134221.32) < 0.02);
+    assert.ok(Math.abs(r.simplesHibrido.total - 134385.32) < 0.02);
     assert.ok(r.simplesHibrido.total < r.simplesTradicional.total);
-    assert.ok(html.includes("CBS líquida</td><td class=\"num\">R$ 3.520,00"));
+    assert.ok(html.includes("CBS líquida</td><td class=\"num\">R$ 3.684,00"));
     assert.ok(html.includes("(=) DAS reduzido</td><td class=\"num\">R$ 130.701,32"));
-    assert.ok(html.includes("(=) Total Híbrido</td><td class=\"num\">R$ 134.221,32"));
+    assert.ok(html.includes("(=) Total Híbrido</td><td class=\"num\">R$ 134.385,32"));
     assert.ok(html.includes("Economia anual"));
     assert.ok(html.includes("Regime recomendado</span><strong>Simples Híbrido"));
     assert.ok(html.includes("A carga tributária passará") || html.includes("A carga tributária será reduzida") || html.includes("pontos percentuais"));

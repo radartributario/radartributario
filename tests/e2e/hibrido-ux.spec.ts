@@ -177,7 +177,7 @@ test.describe("UX Simples Tradicional x Híbrido", () => {
     await expect(hibridoColumn).toContainText("CBS Líquida");
     await expect(hibridoColumn).not.toContainText("IBS em 2027");
     await expect(memorySection).toContainText("Observação: Nesta premissa do simulador, o IBS permanece recolhido dentro do DAS");
-    const sequencia = ["DAS Original", "(-) CBS retirada", "(=) DAS reduzido", "(+) CBS Líquida", "TOTAL HÍBRIDO", "Alíquota Legal", "Redução Legal", "Alíquota Aplicada", "Receita Tributável", "Débito (6,16%)", "Compras com Crédito", "Crédito (8,80%)", "CBS Líquida"];
+    const sequencia = ["DAS Original", "(-) CBS retirada", "(=) DAS reduzido", "(+) CBS Líquida", "TOTAL HÍBRIDO", "Alíquota Legal", "Redução Legal", "Alíquota Aplicada", "Receita Tributável", "Débito (9,21%)", "Compras com Crédito", "Crédito (9,21%)", "CBS Líquida"];
     for (const label of sequencia) {
       const item = hibridoColumn.getByText(label, { exact: true }).first();
       await expect(item).toBeVisible();

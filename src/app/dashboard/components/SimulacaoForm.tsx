@@ -98,7 +98,7 @@ const FIELDS: FieldDef[] = [
   { id: "aliquotaIPI", label: "Alíquota IPI (%)", block: "tributario", defaultValue: "0" },
   { id: "segregacao", label: "% Serviços no Faturamento (LP)", block: "tributario" },
   { id: "refPctCbs", label: "Receita sujeita à CBS padrão (%)", block: "tributario", defaultValue: "100" },
-  { id: "refAliqCbs", label: "Alíquota estimada da CBS (%)", block: "tributario", defaultValue: "8.8" },
+  { id: "refAliqCbs", label: "Alíquota estimada da CBS (%)", block: "tributario", defaultValue: "9.21" },
   { id: "refPctRed", label: "Receita com alíquota reduzida (%)", block: "tributario", defaultValue: "0" },
   { id: "refPctRedVal", label: "Percentual de redução (%)", block: "tributario", defaultValue: "40" },
   { id: "refPctZero", label: "Receita com alíquota zero (%)", block: "tributario", defaultValue: "0" },
@@ -115,21 +115,21 @@ const FIELDS: FieldDef[] = [
   { id: "refCredManual", label: "Créditos manuais (R$)", block: "tributario", type: "currency" },
   // Opção híbrida (Simples + CBS fora do DAS)
   { id: "optOutPct", label: "% de opt-out do DAS", block: "tributario", defaultValue: "100", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO"] },
-  { id: "aliqCbsFora", label: "Alíquota CBS fora do DAS (%)", block: "tributario", defaultValue: "8.8", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO"] },
-  { id: "aliqCbsCompras", label: "Alíquota média da CBS nas aquisições (%)", block: "tributario", defaultValue: "8.8", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO"] },
-  { id: "benefReqProfissionais", label: "Sócios habilitados e registrados no conselho?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA"], options: [
+  { id: "aliqCbsFora", label: "Alíquota CBS fora do DAS (%)", block: "tributario", defaultValue: "9.21", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO"] },
+  { id: "aliqCbsCompras", label: "Alíquota média da CBS nas aquisições (%)", block: "tributario", defaultValue: "9.21", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO"] },
+  { id: "benefReqProfissionais", label: "Sócios habilitados e registrados no conselho?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA", "PRESUMIDO_ATUAL_VS_REFORMA_2033"], options: [
     { v: "", l: "Não respondido" }, { v: "sim", l: "Sim" }, { v: "nao", l: "Não" },
   ]},
-  { id: "benefReqSemSocioPJ", label: "Sem pessoa jurídica como sócia?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA"], options: [
+  { id: "benefReqSemSocioPJ", label: "Sem pessoa jurídica como sócia?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA", "PRESUMIDO_ATUAL_VS_REFORMA_2033"], options: [
     { v: "", l: "Não respondido" }, { v: "sim", l: "Sim" }, { v: "nao", l: "Não" },
   ]},
-  { id: "benefReqNaoParticipaPJ", label: "Não participa de outra pessoa jurídica?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA"], options: [
+  { id: "benefReqNaoParticipaPJ", label: "Não participa de outra pessoa jurídica?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA", "PRESUMIDO_ATUAL_VS_REFORMA_2033"], options: [
     { v: "", l: "Não respondido" }, { v: "sim", l: "Sim" }, { v: "nao", l: "Não" },
   ]},
-  { id: "benefReqExclusiva", label: "Exerce exclusivamente atividade elegível?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA"], options: [
+  { id: "benefReqExclusiva", label: "Exerce exclusivamente atividade elegível?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA", "PRESUMIDO_ATUAL_VS_REFORMA_2033"], options: [
     { v: "", l: "Não respondido" }, { v: "sim", l: "Sim" }, { v: "nao", l: "Não" },
   ]},
-  { id: "benefReqDireta", label: "Serviços prestados diretamente por profissionais habilitados?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA"], options: [
+  { id: "benefReqDireta", label: "Serviços prestados diretamente por profissionais habilitados?", block: "tributario", type: "select", mode: ["SIMPLES_TRADICIONAL_VS_HIBRIDO", "PRESUMIDO_ATUAL_VS_REFORMA", "PRESUMIDO_ATUAL_VS_REFORMA_2033"], options: [
     { v: "", l: "Não respondido" }, { v: "sim", l: "Sim" }, { v: "nao", l: "Não" },
   ]},
 ];
@@ -243,11 +243,12 @@ export default function SimulacaoForm({ data, onChange, onGenerate, tipoComparac
   };
 
   const isHibrido = tipoComparacao === "SIMPLES_TRADICIONAL_VS_HIBRIDO";
-  const isReforma = tipoComparacao === "PRESUMIDO_ATUAL_VS_REFORMA";
+  const isReforma = tipoComparacao === "PRESUMIDO_ATUAL_VS_REFORMA" || tipoComparacao === "PRESUMIDO_ATUAL_VS_REFORMA_2033";
 
   const fieldsByBlock = (block: string) => FIELDS.filter(f => {
     if (f.block !== block) return false;
     if (f.mode && !showAllFields && !f.mode.includes(tipoComparacao)) return false;
+    if (tipoComparacao === "PRESUMIDO_ATUAL_VS_REFORMA_2033" && f.id === "refAliqCbs") return false;
     const SUBL_FIELDS = ["receitaAnoAnterior","receitaAcumulada","mesUltrapassagem","impedimentoIssJaProduzEfeitos"];
     if (SUBL_FIELDS.includes(f.id)) {
       const rbtStr = data.rbt12Input || "";

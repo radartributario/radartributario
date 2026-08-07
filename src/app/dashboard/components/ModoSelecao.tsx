@@ -3,7 +3,8 @@
 export type TipoComparacao =
   | "SIMPLES_VS_PRESUMIDO"
   | "SIMPLES_TRADICIONAL_VS_HIBRIDO"
-  | "PRESUMIDO_ATUAL_VS_REFORMA";
+  | "PRESUMIDO_ATUAL_VS_REFORMA"
+  | "PRESUMIDO_ATUAL_VS_REFORMA_2033";
 
 interface ModoSelecaoProps {
   onSelect: (tipo: TipoComparacao) => void;
@@ -47,6 +48,16 @@ const modos: {
     botao: "Analisar impacto",
     selo: { texto: "Reforma Tributária", cor: "amber" },
   },
+  {
+    id: "PRESUMIDO_ATUAL_VS_REFORMA_2033",
+    icon: "\u{1F9FE}",
+    titulo: "Reforma Tributária (2033)",
+    subtitulo: "Impacto da implantação definitiva no Lucro Presumido",
+    descricao:
+      "Compare a carga tributária atual do Lucro Presumido com o cenário definitivo de 2033, em que PIS/COFINS, ISS e ICMS são substituídos por CBS (9,21%) e IBS (18,70%), conforme a LC 214/2025.",
+    botao: "Projetar impacto 2033",
+    selo: { texto: "Reforma 2033", cor: "amber" },
+  },
 ];
 
 export default function ModoSelecao({ onSelect }: ModoSelecaoProps) {
@@ -61,7 +72,7 @@ export default function ModoSelecao({ onSelect }: ModoSelecaoProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
         {modos.map((modo) => (
           <button
             key={modo.id}

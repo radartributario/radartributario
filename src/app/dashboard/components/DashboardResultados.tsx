@@ -504,7 +504,7 @@ export default function DashboardResultados({
     );
   }
 
-  if (tipoComparacao === "PRESUMIDO_ATUAL_VS_REFORMA") {
+  if (tipoComparacao === "PRESUMIDO_ATUAL_VS_REFORMA" || tipoComparacao === "PRESUMIDO_ATUAL_VS_REFORMA_2033") {
     return (
       <DashboardResultadosReforma
         results={results}

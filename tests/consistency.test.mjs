@@ -480,76 +480,76 @@ describe("LP filtering by activity type", () => {
 describe("CBS credit calculation (corrigido)", () => {
   it("Credito = compras * aliquota (sem fator cenario)", () => {
     const compras = 500000;
-    const aliqCbs = 0.088;
+    const aliqCbs = 0.0921;
     const credPct = 1.0; // 100%
     const credito = compras * aliqCbs * credPct;
-    assert.strictEqual(credito, 44000);
+    assert.strictEqual(credito, 46050);
   });
 
   it("CBS bruta = receita * aliquota", () => {
     const receita = 1000000;
-    const aliqCbs = 0.088;
+    const aliqCbs = 0.0921;
     const cbsBruta = receita * aliqCbs;
-    assert.strictEqual(cbsBruta, 88000);
+    assert.strictEqual(cbsBruta, 92100);
   });
 
   it("CBS liquida = bruta - credito", () => {
-    const cbsBruta = 88000;
-    const credito = 44000;
+    const cbsBruta = 92100;
+    const credito = 46050;
     const cbsLiquida = cbsBruta - credito;
-    assert.strictEqual(cbsLiquida, 44000);
+    assert.strictEqual(cbsLiquida, 46050);
   });
 
   it("Impacto anual = CBS liquida - PIS+COFINS atual", () => {
-    const cbsLiquida = 44000;
+    const cbsLiquida = 46050;
     const pisCofins = 36500;
     const impacto = cbsLiquida - pisCofins;
-    assert.strictEqual(impacto, 7500);
+    assert.strictEqual(impacto, 9550);
   });
 
-  it("Cenario completo: 500k compras, 1M receita, 8.8%", () => {
+  it("Cenario completo: 500k compras, 1M receita, 9.21%", () => {
     const receita = 1000000;
     const compras = 500000;
-    const aliqCbs = 0.088;
+    const aliqCbs = 0.0921;
     const credPct = 1.0;
     const cbsBruta = receita * aliqCbs;
     const credito = compras * aliqCbs * credPct;
     const cbsLiquida = cbsBruta - credito;
     const pisCofins = 36500;
     const impacto = cbsLiquida - pisCofins;
-    assert.strictEqual(cbsBruta, 88000);
-    assert.strictEqual(credito, 44000);
-    assert.strictEqual(cbsLiquida, 44000);
-    assert.strictEqual(impacto, 7500);
+    assert.strictEqual(cbsBruta, 92100);
+    assert.strictEqual(credito, 46050);
+    assert.strictEqual(cbsLiquida, 46050);
+    assert.strictEqual(impacto, 9550);
   });
 
   it("Credito com 80% creditavel", () => {
     const compras = 500000;
-    const aliqCbs = 0.088;
+    const aliqCbs = 0.0921;
     const credPct = 0.8;
     const baseCred = compras * credPct;
     const credito = baseCred * aliqCbs;
     assert.strictEqual(baseCred, 400000);
-    assert.strictEqual(credito, 35200);
+    assert.strictEqual(credito, 36840);
   });
 
   it("Credito nao pode ser maior que CBS bruta", () => {
-    const cbsBruta = 88000;
+    const cbsBruta = 92100;
     const compras = 2000000;
-    const aliqCbs = 0.088;
+    const aliqCbs = 0.0921;
     const credPct = 1.0;
     const credito = Math.min(compras * aliqCbs * credPct, cbsBruta);
-    assert.strictEqual(credito, 88000); // capped
+    assert.strictEqual(credito, 92100); // capped
   });
 
   it("Cenario conservador (50%) foi removido — credito usa 100% direto", () => {
     const compras = 500000;
-    const aliqCbs = 0.088;
+    const aliqCbs = 0.0921;
     const credPct = 1.0; // unico fator, sem cenario
     const credito = compras * aliqCbs * credPct;
     assert.notStrictEqual(credito, 22000); // nao é mais 22k
     assert.notStrictEqual(credito, 33000); // nao é mais 33k
-    assert.strictEqual(credito, 44000); // é 44k
+    assert.strictEqual(credito, 46050); // é 46,05k
   });
 });
 

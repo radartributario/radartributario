@@ -10,7 +10,7 @@ import { safeStorageGet, safeStorageSet, saveResult, loadResult, clearSensitiveD
 import { STORAGE_KEYS } from "./components/ResultadosTypes";
 import type { TipoComparacao } from "./components/ResultadosTypes";
 
-const VALID_TIPOS: TipoComparacao[] = ["SIMPLES_VS_PRESUMIDO","SIMPLES_TRADICIONAL_VS_HIBRIDO","PRESUMIDO_ATUAL_VS_REFORMA"];
+const VALID_TIPOS: TipoComparacao[] = ["SIMPLES_VS_PRESUMIDO","SIMPLES_TRADICIONAL_VS_HIBRIDO","PRESUMIDO_ATUAL_VS_REFORMA","PRESUMIDO_ATUAL_VS_REFORMA_2033"];
 
 const getInitialTipo = (): TipoComparacao => {
   if (typeof window === "undefined") return "SIMPLES_VS_PRESUMIDO";

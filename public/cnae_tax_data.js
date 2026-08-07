@@ -64,7 +64,7 @@ window.autoClassifyCnae = function(cnae, fatorR) {
 window.getCbsTreatment = function(codigo) {
   const classe = (codigo || '').split('/')[0];
   const digits = classe.replace(/\D/g,'');
-  if (!digits) return { tipo: 'padrao', desc: 'Alíq. Padrão (8,8%)' };
+  if (!digits) return { tipo: 'padrao', desc: 'Alíq. Padrão (9,21%)' };
 
   // Extrai a divisão CNAE (2 primeiros dígitos) para classificação por setor
   const div = parseInt(digits.substring(0,2), 10);
@@ -83,7 +83,7 @@ window.getCbsTreatment = function(codigo) {
   if (div >= 69 && div <= 75) return { tipo: 'reduzida', fator: 0.7, desc: 'Alíq. Reduzida 30% - Profissionais Liberais', lei: 'Art. 127' };
 
   // Alíquota padrão
-  return { tipo: 'padrao', desc: 'Alíq. Padrão (8,8%)', lei: 'Arts. 14-16' };
+  return { tipo: 'padrao', desc: 'Alíq. Padrão (9,21%)', lei: 'Arts. 14-16' };
 };
 
 // Popula CNAE_TAX_DATA com classificação automática

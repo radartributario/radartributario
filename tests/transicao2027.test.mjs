@@ -63,7 +63,7 @@ function fd(overrides = {}) {
     tipoAtivLP: "servicos",
     cnae: "6201-1/01",
     refReceita: "1200000",
-    refAliqCbs: "8.8",
+    refAliqCbs: "9.21",
     refPctCbs: "100",
     refPctRed: "0",
     refPctZero: "0",
@@ -78,7 +78,8 @@ function fd(overrides = {}) {
     refCredSn: "0",
     refCredManual: "0",
     optOutPct: "100",
-    aliqCbsFora: "8.8",
+    aliqCbsFora: "9.21",
+    aliqCbsCompras: "9.21",
     anoSIM: "2027",
     ...overrides,
   };
@@ -109,17 +110,17 @@ describe("Transição 2027 — IBS", () => {
 
 });
 
-describe("Transição 2027 — CBS mantida em 8,80%", () => {
-  it("CBS permanece 8,80% no módulo híbrido", () => {
+describe("Transição 2027 — CBS em 9,21%", () => {
+  it("CBS em 9,21% no módulo híbrido", () => {
     const result = engine.calcularComparacaoSimplesHibrido(fd());
     if (result.error) throw new Error(result.error);
-    assert.ok(result.CBS.aliq === 8.8, "CBS alíquota = 8,80%");
+    assert.ok(result.CBS.aliq === 9.21, "CBS alíquota = 9,21%");
   });
 
-  it("CBS permanece 8,80% no módulo reforma", () => {
+  it("CBS em 9,21% no módulo reforma", () => {
     const result = engine.calcularComparacaoPresumidoReforma(fd());
     if (result.error) throw new Error(result.error);
-    assert.ok(result.CBS.aliq === 8.8, "CBS alíquota = 8,80%");
+    assert.ok(result.CBS.aliq === 9.21, "CBS alíquota = 9,21%");
   });
 });
 
@@ -151,7 +152,7 @@ describe("Transição 2027 — Simples Híbrido (IBS desligado por premissa func
     if (result.error) throw new Error(result.error);
     const premissas = result.premissas;
     assert.ok(premissas, "premissas presentes");
-    assert.strictEqual(result.CBS.aliqCompras, 8.8, "CBS.aliqCompras presente");
+    assert.strictEqual(result.CBS.aliqCompras, 9.21, "CBS.aliqCompras presente");
     assert.ok(result.simplesHibrido.aliquota !== premissas.aliqCbs, "Alíquota total ≠ alíquota CBS");
   });
 
@@ -238,12 +239,12 @@ describe("Transição 2027 — Módulo LP × Reforma", () => {
     assert.strictEqual(result.statusCalculo, "OK");
   });
 
-  it("contabilidade sem confirmação mantém cenário sem benefício em R$ 243.560,00", () => {
+  it("contabilidade sem confirmação mantém cenário sem benefício em R$ 247.660,00", () => {
     const result = engine.calcularComparacaoPresumidoReforma(fd({ cnae: "6920-6/01" }));
     if (result.error) throw new Error(result.error);
     assert.strictEqual(result.premissas.beneficioProfissional.status, "PENDENTE");
-    assert.strictEqual(result.cenarioFuturo.total, 243560);
-    assert.strictEqual(result.CBS.liquida, 88000.00000000001);
+    assert.strictEqual(result.cenarioFuturo.total, 247660);
+    assert.strictEqual(result.CBS.liquida, 92100.00000000001);
     assert.strictEqual(result.IBS.liquido, 1000);
     assert.ok(result.cenariosBeneficio, "deve retornar cenários condicionado com/sem benefício");
   });
@@ -259,24 +260,24 @@ describe("Transição 2027 — Módulo LP × Reforma", () => {
     }));
     if (result.error) throw new Error(result.error);
     assert.strictEqual(result.premissas.beneficioProfissional.status, "APLICADO");
-    assert.strictEqual(result.CBS.aliq, 6.16);
-    assert.strictEqual(result.CBS.debito, 73920);
-    assert.strictEqual(result.CBS.credito, 17600);
-    assert.strictEqual(result.CBS.liquida, 56320);
+    assert.strictEqual(result.CBS.aliq, 6.447000000000001);
+    assert.strictEqual(result.CBS.debito, 77364.00000000001);
+    assert.strictEqual(result.CBS.credito, 18420.000000000004);
+    assert.strictEqual(result.CBS.liquida, 58944.000000000015);
     assert.ok(Math.abs(result.IBS.aliq - 0.07) < 0.0001);
     assert.strictEqual(result.IBS.debito, 840);
     assert.strictEqual(result.IBS.credito, 200);
     assert.strictEqual(result.IBS.liquido, 640);
-    assert.strictEqual(result.cenarioFuturo.total, 211520);
+    assert.strictEqual(result.cenarioFuturo.total, 214144);
   });
 
   it("contabilidade com requisito negado não aplica benefício profissional", () => {
     const result = engine.calcularComparacaoPresumidoReforma(fd({ cnae: "6920601", benefReqProfissionais: "nao" }));
     if (result.error) throw new Error(result.error);
     assert.strictEqual(result.premissas.beneficioProfissional.status, "NAO_APLICADO");
-    assert.strictEqual(result.CBS.aliq, 8.8);
+    assert.strictEqual(result.CBS.aliq, 9.21);
     assert.strictEqual(result.IBS.aliq, 0.1);
-    assert.strictEqual(result.cenarioFuturo.total, 243560);
+    assert.strictEqual(result.cenarioFuturo.total, 247660);
     assert.strictEqual(result.cenariosBeneficio, null);
   });
 
@@ -285,9 +286,9 @@ describe("Transição 2027 — Módulo LP × Reforma", () => {
     if (result.error) throw new Error(result.error);
     assert.strictEqual(result.premissas.cbsNomenclatura.base, "CBS sobre prestação de serviços");
     assert.strictEqual(result.premissas.ibsNomenclatura.base, "IBS sobre prestação de serviços");
-    assert.strictEqual(result.cenariosBeneficio.comBeneficioConfirmado.total, 211520);
-    assert.strictEqual(result.cenariosBeneficio.semBeneficioConfirmado.total, 243560);
-    assert.strictEqual(result.comparacaoFinanceira.valorAnual, 45200);
+    assert.strictEqual(result.cenariosBeneficio.comBeneficioConfirmado.total, 214144);
+    assert.strictEqual(result.cenariosBeneficio.semBeneficioConfirmado.total, 247660);
+    assert.strictEqual(result.comparacaoFinanceira.valorAnual, 49300);
   });
 
   it("regressão visual: valores principais e impactos do cenário pendente", () => {
@@ -300,14 +301,14 @@ describe("Transição 2027 — Módulo LP × Reforma", () => {
     assert.strictEqual(atual.aliquota, 16.53);
     assert.strictEqual(atual.media, 16530);
     assert.strictEqual(atual.iss, 30000);
-    assert.strictEqual(com.total, 211520);
-    assert.ok(Math.abs(com.aliquotaTotal - 17.6266666667) < 0.0001);
-    assert.strictEqual(sem.total, 243560);
-    assert.ok(Math.abs(sem.aliquotaTotal - 20.2966666667) < 0.0001);
-    assert.strictEqual(com.total - atual.total, 13160);
-    assert.ok(Math.abs((com.total - atual.total) / atual.total * 100 - 6.6344020972) < 0.0001);
-    assert.strictEqual(sem.total - atual.total, 45200);
-    assert.ok(Math.abs((sem.total - atual.total) / atual.total * 100 - 22.786852188) < 0.0001);
+    assert.strictEqual(com.total, 214144);
+    assert.ok(Math.abs(com.aliquotaTotal - 17.8453333333) < 0.0001);
+    assert.strictEqual(sem.total, 247660);
+    assert.ok(Math.abs(sem.aliquotaTotal - 20.6383333333) < 0.0001);
+    assert.strictEqual(com.total - atual.total, 15784);
+    assert.ok(Math.abs((com.total - atual.total) / atual.total * 100 - 7.9572494454) < 0.0001);
+    assert.strictEqual(sem.total - atual.total, 49300);
+    assert.ok(Math.abs((sem.total - atual.total) / atual.total * 100 - 24.8538011696) < 0.0001);
   });
 
   it("detalhamento LP atual retorna PIS, Cofins e bases para memória", () => {
@@ -334,8 +335,8 @@ describe("Transição 2027 — Módulo LP × Reforma", () => {
     assert.match(html, /Resultado condicionado/);
     assert.match(html, /Pós-Reforma com benefício/);
     assert.match(html, /Pós-Reforma sem benefício/);
-    assert.match(html, /R\$ 211\.520,00/);
-    assert.match(html, /R\$ 243\.560,00/);
+    assert.match(html, /R\$ 214\.144,00/);
+    assert.match(html, /R\$ 247\.660,00/);
     assert.doesNotMatch(html, /Regime\/cenário favorecido/);
   });
 
@@ -352,9 +353,9 @@ describe("Transição 2027 — Módulo LP × Reforma", () => {
     const result = engine.calcularComparacaoPresumidoReforma(confirmado);
     if (result.error) throw new Error(result.error);
     const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(result, confirmado, resolve));
-    assert.match(html, /R\$ 211\.520,00/);
+    assert.match(html, /R\$ 214\.144,00/);
     assert.doesNotMatch(html, /Pós-Reforma sem benefício/);
-    assert.doesNotMatch(html, /R\$ 243\.560,00/);
+    assert.doesNotMatch(html, /R\$ 247\.660,00/);
   });
 
   it("PDF negado omite cenário com benefício", async () => {
@@ -362,9 +363,9 @@ describe("Transição 2027 — Módulo LP × Reforma", () => {
     const result = engine.calcularComparacaoPresumidoReforma(negado);
     if (result.error) throw new Error(result.error);
     const html = await new Promise(resolve => engine.buildPdfHtmlFromObject(result, negado, resolve));
-    assert.match(html, /R\$ 243\.560,00/);
+    assert.match(html, /R\$ 247\.660,00/);
     assert.doesNotMatch(html, /Pós-Reforma com benefício/);
-    assert.doesNotMatch(html, /R\$ 211\.520,00/);
+    assert.doesNotMatch(html, /R\$ 214\.144,00/);
   });
 
   it("PDF contém memória CBS/IBS de serviços e não usa bloco de impacto financeiro", async () => {

@@ -237,19 +237,21 @@ interface CardImpactoProps {
   valorMensal: number;
   variacao: number;
   flagMenorCarga?: string;
+  titulo?: string;
 }
 
 interface ResumoExecutivoProps {
   card1: CardResumoProps;
   card2: CardResumoProps;
   cardImpacto: CardImpactoProps;
+  titulo?: string;
 }
-export function ResumoExecutivo({ card1, card2, cardImpacto }: ResumoExecutivoProps) {
+export function ResumoExecutivo({ card1, card2, cardImpacto, titulo = "Resultado Executivo" }: ResumoExecutivoProps) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
       <div className="flex items-center gap-2 mb-6">
         <BarChart3 className="w-6 h-6 text-blue-600 shrink-0" />
-        <h2 className="text-xl font-bold text-slate-800">Resultado Executivo</h2>
+        <h2 className="text-xl font-bold text-slate-800">{titulo}</h2>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <CardResumo {...card1} />
@@ -262,7 +264,7 @@ export function ResumoExecutivo({ card1, card2, cardImpacto }: ResumoExecutivoPr
 
 // ===== CARD DE IMPACTO =====
 
-export function CardImpacto({ isAumento, isEmpate = false, valorAnual, rotulo, valorMensal, variacao, flagMenorCarga }: CardImpactoProps) {
+export function CardImpacto({ isAumento, isEmpate = false, valorAnual, rotulo, valorMensal, variacao, flagMenorCarga, titulo }: CardImpactoProps) {
   const corBg = isEmpate ? "bg-slate-50" : isAumento ? "bg-red-50" : "bg-emerald-50";
   const corBorda = isEmpate ? "border-slate-200" : isAumento ? "border-red-200" : "border-emerald-200";
   const corTexto = isEmpate ? "text-slate-800" : isAumento ? "text-red-800" : "text-emerald-800";
@@ -279,7 +281,7 @@ export function CardImpacto({ isAumento, isEmpate = false, valorAnual, rotulo, v
           : <TrendingDown className="w-5 h-5 text-emerald-600 shrink-0" />
         }
         <h3 className={`text-lg font-bold ${corTexto}`}>
-          {isEmpate ? "Empate" : isAumento ? "Aumento de Carga" : "Economia"}
+          {titulo || (isEmpate ? "Empate" : isAumento ? "Aumento de Carga" : "Economia")}
         </h3>
       </div>
       <MoneyValue value={valorAnual} size="xl" color={corValor} />
@@ -313,8 +315,9 @@ interface ConclusaoProps {
   vencedor?: string;
   impactoAnual: number;
   impactoPct: number;
+  badgeTexto?: string;
 }
-export function CardConclusao({ isAumento, isEmpate = false, texto, vencedor, impactoAnual, impactoPct }: ConclusaoProps) {
+export function CardConclusao({ isAumento, isEmpate = false, texto, vencedor, impactoAnual, impactoPct, badgeTexto }: ConclusaoProps) {
   const corBg = isEmpate ? "bg-slate-50 border-slate-200" : isAumento ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200";
   const badgeBg = isEmpate ? "bg-slate-100 text-slate-800" : isAumento ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800";
   const badgeIcon = isEmpate
@@ -328,7 +331,7 @@ export function CardConclusao({ isAumento, isEmpate = false, texto, vencedor, im
       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
         <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-base font-bold ${badgeBg} shrink-0`}>
           {badgeIcon}
-          {isEmpate ? "Empate" : isAumento ? "Aumento de carga" : "Menor carga tributária"}
+          {badgeTexto || (isEmpate ? "Empate" : isAumento ? "Aumento de carga" : "Menor carga tributária")}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-base leading-relaxed text-slate-700">{texto}</p>

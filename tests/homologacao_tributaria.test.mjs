@@ -101,7 +101,9 @@ function fd(overrides = {}) {
     anoSIM: "2027",
     refCredPct: "100",
     optOutPct: "100",
-    aliqCbsFora: "8.8",
+    aliqCbsFora: "9.21",
+    aliqCbsCompras: "9.21",
+    refAliqCbs: "9.21",
     ...overrides,
   };
 }
@@ -467,13 +469,13 @@ describe("Homologação — Cenário 5: Sublimite (R$ 4M, comércio)", () => {
 // Entrada:
 //   RBT12 = R$ 1.200.000, Compras = R$ 200.000, optOut = 100%
 //   Serviços (CNAE 6201-1/01, não Fator R → Anexo III)
-//   CBS alíquota = 8,8%, IBS em 2027 = 0%
+//   CBS alíquota = 9,21%, IBS em 2027 = 0%
 // =============================================================================
 describe("Homologação — Cenário 6: Módulo Híbrido 2027", () => {
   const cenario = fd({
     optOutPct: "100",
-    aliqCbsFora: "8.8",
-    aliqCbsCompras: "8.8",
+    aliqCbsFora: "9.21",
+    aliqCbsCompras: "9.21",
   });
 
   it("6a. Cálculo completo — DAS, CBS, IBS, total", () => {
@@ -485,11 +487,11 @@ describe("Homologação — Cenário 6: Módulo Híbrido 2027", () => {
     // DAS integral = 1.2M * 0,16 - 35.640 = 192.000 - 35.640 = R$ 156.360
     const dasIntegral = 1_200_000 * 0.16 - 35640; // 156360
 
-    // CBS débito = 1.2M * 8,8% = 105.600
-    // CBS crédito = 200K * 8,8% = 17.600
-    // CBS líquida = 105.600 - 17.600 = 88.000
-    const cbsDebito = 1_200_000 * 0.088;
-    const cbsCredito = 200_000 * 0.088;
+    // CBS débito = 1.2M * 9,21% = 110.520
+    // CBS crédito = 200K * 9,21% = 18.420
+    // CBS líquida = 110.520 - 18.420 = 92.100
+    const cbsDebito = 1_200_000 * 0.0921;
+    const cbsCredito = 200_000 * 0.0921;
     const cbsLiquida = cbsDebito - cbsCredito;
 
     registraDiferenca("6a", "DAS integral", dasIntegral, result.simplesHibrido.dasIntegral, 'R$');
@@ -516,14 +518,14 @@ describe("Homologação — Cenário 6: Módulo Híbrido 2027", () => {
 // =============================================================================
 // Entrada:
 //   RBT12 = R$ 1.200.000, Compras = R$ 200.000, ISS = 5%, ICMS = 0%
-//   Serviços (TI, Anexo III), alíquota CBS = 8,8%, IBS = 0,10%
+//   Serviços (TI, Anexo III), alíquota CBS = 9,21%, IBS = 0,10%
 // Cálculo 100% independente — nenhum valor lido do motor para compor expected
 // =============================================================================
 describe("Homologação — Cenário 7: Reforma 2027 (cálculo independente)", () => {
   it("7a. Total futuro = LP - PIS/COFINS - IPI + CBS + IBS", () => {
     const cenario = fd({
       refReceita: "1200000",
-      refAliqCbs: "8.8",
+      refAliqCbs: "9.21",
       refCredPct: "100",
       aliquotaISS: "5",
       aliquotaICMS: "0",
@@ -552,8 +554,8 @@ describe("Homologação — Cenário 7: Reforma 2027 (cálculo independente)", (
     const lpTotal = irpj15 + adicIRPJ + csll + pisCofins + iss + icms + ipi + encargos;
 
     // --- CBS independente ---
-    const cbsDebito = receita * 0.088;
-    const cbsCredito = compras * 0.088;
+    const cbsDebito = receita * 0.0921;
+    const cbsCredito = compras * 0.0921;
     const cbsLiquida = cbsDebito - cbsCredito;
 
     // --- IBS independente (0,10%) ---
@@ -591,24 +593,24 @@ describe("Homologação — Cenário 8: Redução CBS (contabilidade, Art. 127)"
     optOutPct: "100",
   });
 
-  it("8a. CBS alíquota reduzida = 8,8% * 0,7 = 6,16%", () => {
+  it("8a. CBS alíquota reduzida = 9,21% * 0,7 = 6,447%", () => {
     const result = engine.calcularComparacaoSimplesHibrido(cenario);
     if (result.error) throw new Error(result.error);
 
-    registraDiferenca("8a", "CBS alíquota", 6.16, result.CBS.aliq, '%');
-    assert.ok(Math.abs(result.CBS.aliq - 6.16) < 0.01,
-      `CBS alíquota: esperado 6,16%, obtido ${result.CBS.aliq}%`);
+    registraDiferenca("8a", "CBS alíquota", 6.447, result.CBS.aliq, '%');
+    assert.ok(Math.abs(result.CBS.aliq - 6.447) < 0.01,
+      `CBS alíquota: esperado 6,447%, obtido ${result.CBS.aliq}%`);
     assert.ok(result.CBS.reducao, "Objeto reducao deve existir");
     assert.strictEqual(result.CBS.reducao.pct, 30, "Redução de 30%");
     assert.ok(result.CBS.reducao.condicional, "Benefício condicional (Art. 128)");
   });
 
-  it("8b. CBS crédito usa alíquota padrão (8,8%), não a reduzida", () => {
+  it("8b. CBS crédito usa alíquota padrão (9,21%), não a reduzida", () => {
     const result = engine.calcularComparacaoSimplesHibrido(cenario);
     if (result.error) throw new Error(result.error);
 
-    const debitoEsperado = 1_200_000 * 0.0616;
-    const creditoEsperado = 200_000 * 0.088;
+    const debitoEsperado = 1_200_000 * 0.06447;
+    const creditoEsperado = 200_000 * 0.0921;
     const liquidaEsperada = debitoEsperado - creditoEsperado;
 
     registraDiferenca("8b", "CBS débito reduzido", debitoEsperado, result.CBS.debito, 'R$');
@@ -706,7 +708,7 @@ describe("Homologação — Cenário 10: Consistência entre módulos", () => {
     const r2 = engine.calcularComparacaoPresumidoReforma({
       ...cenario,
       refReceita: "1200000",
-      refAliqCbs: "8.8",
+      refAliqCbs: "9.21",
     });
     if (r1.error) throw new Error(r1.error);
     if (r2.error) throw new Error(r2.error);
@@ -768,18 +770,18 @@ describe("Homologação — Cenário 11: Benefício CBS hospital (Art. 130, 60%)
     optOutPct: "100",
   });
 
-  it("11a. CBS alíquota = 8,8% * 0,4 = 3,52% (incondicional)", () => {
+  it("11a. CBS alíquota = 9,21% * 0,4 = 3,684% (incondicional)", () => {
     const result = engine.calcularComparacaoSimplesHibrido(cenario);
     if (result.error) throw new Error(result.error);
 
-    registraDiferenca("11a", "CBS alíquota hospital", 3.52, result.CBS.aliq, '%');
-    assert.ok(Math.abs(result.CBS.aliq - 3.52) < 0.01);
+    registraDiferenca("11a", "CBS alíquota hospital", 3.684, result.CBS.aliq, '%');
+    assert.ok(Math.abs(result.CBS.aliq - 3.684) < 0.01);
     assert.ok(result.CBS.reducao, "Objeto reducao deve existir");
     assert.strictEqual(result.CBS.reducao.pct, 60, "Redução de 60%");
-    assert.strictEqual(result.CBS.reducao.condicional, false, "Hospital (Art. 130) → incondicional");
+    assert.strictEqual(result.CBS.reducao.condicional, false, "Hospital (Art. 130) é incondicional");
 
-    const debitoEsp = 1_200_000 * 0.0352;
-    const creditoEsp = 200_000 * 0.088;
+    const debitoEsp = 1_200_000 * 0.03684;
+    const creditoEsp = 200_000 * 0.0921;
     const liquidaEsp = debitoEsp - creditoEsp;
     registraDiferenca("11a", "CBS débito hospital", debitoEsp, result.CBS.debito, 'R$');
     registraDiferenca("11a", "CBS líquida hospital", liquidaEsp, result.CBS.liquida, 'R$');
@@ -875,7 +877,7 @@ describe("Homologação — Cenário 15: IBS no módulo Reforma (> 0)", () => {
   it("15a. IBS débito = 1,2M * 0,10% = R$ 1.200, crédito = 200K * 0,10% = R$ 200", () => {
     const cenario = fd({
       refReceita: "1200000",
-      refAliqCbs: "8.8",
+      refAliqCbs: "9.21",
       aliquotaISS: "5",
     });
     const result = engine.calcularComparacaoPresumidoReforma(cenario);
@@ -1304,8 +1306,8 @@ describe("S22 — Consolidação técnica do motor híbrido", () => {
       tipoAtivLP: "comercio",
       comprasInput: "1.200.000,00",
       optOutPct: "100",
-      aliqCbsFora: "8.8",
-      aliqCbsCompras: "8.8",
+      aliqCbsFora: "9.21",
+      aliqCbsCompras: "9.21",
     }));
     if (oficial.error) throw new Error(oficial.error);
 

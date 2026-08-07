@@ -93,10 +93,10 @@ describe("Limites tributarios obrigatorios - Fator R, sublimite, CBS e IBS", () 
   });
 
   it("CBS e IBS zeram o liquido quando os creditos superam os debitos", () => {
-    const cbs = engine.calcularCBS({ receita: 1_000, compras: 2_000, pctCreditavel: 100, aliqPadrao: 0.088, aliqMediaEntradas: 0.088 });
+    const cbs = engine.calcularCBS({ receita: 1_000, compras: 2_000, pctCreditavel: 100, aliqPadrao: 0.0921, aliqMediaEntradas: 0.0921 });
     const ibs = engine.calcularIBS({ receita: 1_000, compras: 2_000, pctCreditavel: 100, aliqPadrao: 0.001, aliqMediaEntradas: 0.001 });
-    close(cbs.cbsDebito, 88, 0.01, "CBS debito");
-    close(cbs.cbsCreditoTotal, 176, 0.01, "CBS credito");
+    close(cbs.cbsDebito, 92.10, 0.01, "CBS debito");
+    close(cbs.cbsCreditoTotal, 184.20, 0.01, "CBS credito");
     close(cbs.cbsLiquida, 0, 0.01, "CBS liquida zerada");
     close(ibs.ibsDebito, 1, 0.01, "IBS debito");
     close(ibs.ibsCredito, 2, 0.01, "IBS credito");

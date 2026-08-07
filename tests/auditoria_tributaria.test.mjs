@@ -126,9 +126,9 @@ function commercialForm(overrides = {}) {
     anoSIM: "2027",
     refCredPct: "100",
     optOutPct: "100",
-    aliqCbsFora: "8.8",
-    aliqCbsCompras: "8.8",
-    refAliqCbs: "8.8",
+    aliqCbsFora: "9.21",
+    aliqCbsCompras: "9.21",
+    refAliqCbs: "9.21",
     aliqIbsCompras: "0.1",
     ...overrides,
   };
@@ -284,8 +284,8 @@ describe("Auditoria tributaria - Reforma Tributaria", () => {
   it("valida CBS, IBS, debitos, creditos, liquidos e transicao 2027", () => {
     const result = engine.calcularComparacaoPresumidoReforma(commercialForm());
     const lp = manualLp({ rbt12: 2_000_000, compras: 800_000, icmsPct: 0.18, ano: 2027 });
-    const cbsDebito = 2_000_000 * 0.088;
-    const cbsCredito = 800_000 * 0.088;
+    const cbsDebito = 2_000_000 * 0.0921;
+    const cbsCredito = 800_000 * 0.0921;
     const cbsLiquida = cbsDebito - cbsCredito;
     const ibsDebito = 2_000_000 * 0.001;
     const ibsCredito = 800_000 * 0.001;
@@ -293,7 +293,7 @@ describe("Auditoria tributaria - Reforma Tributaria", () => {
     const futuro = lp.total - lp.pisCofins - lp.ipi + cbsLiquida + ibsLiquido;
 
     close(result.lucroPresumidoAtual.total, lp.total, cents, "LP atual reforma");
-    close(result.CBS.aliq, 8.8, pctTol, "CBS aliquota");
+    close(result.CBS.aliq, 9.21, pctTol, "CBS aliquota");
     close(result.CBS.debito, cbsDebito, cents, "CBS debito");
     close(result.CBS.credito, cbsCredito, cents, "CBS credito");
     close(result.CBS.liquida, cbsLiquida, cents, "CBS liquida");
@@ -320,12 +320,12 @@ describe("Auditoria tributaria - Reforma Tributaria", () => {
       benefReqExclusiva: "sim",
       benefReqDireta: "sim",
     }));
-    const cbsAliq = 0.088 * 0.70;
+    const cbsAliq = 0.0921 * 0.70;
     const ibsAliq = 0.001 * 0.70;
     close(result.CBS.aliq, cbsAliq * 100, pctTol, "CBS reduzida 30%");
     close(result.CBS.debito, 1_200_000 * cbsAliq, cents, "CBS debito reduzido");
-    close(result.CBS.credito, 200_000 * 0.088, cents, "CBS credito nao reduzido");
-    close(result.CBS.liquida, 1_200_000 * cbsAliq - 200_000 * 0.088, cents, "CBS liquida reduzida");
+    close(result.CBS.credito, 200_000 * 0.0921, cents, "CBS credito nao reduzido");
+    close(result.CBS.liquida, 1_200_000 * cbsAliq - 200_000 * 0.0921, cents, "CBS liquida reduzida");
     close(result.IBS.aliq, ibsAliq * 100, pctTol, "IBS reduzido 30%");
     close(result.IBS.debito, 1_200_000 * ibsAliq, cents, "IBS debito reduzido");
     close(result.IBS.credito, 200_000 * 0.001, cents, "IBS credito nao reduzido");
@@ -339,8 +339,8 @@ describe("Auditoria tributaria - Simples Hibrido", () => {
     const sn = manualSn(2_000_000, "Anexo I");
     const repCbs = 0.1641;
     const cbsRetirada = sn.das * repCbs;
-    const cbsDebito = 2_000_000 * 0.088;
-    const cbsCredito = 800_000 * 0.088;
+    const cbsDebito = 2_000_000 * 0.0921;
+    const cbsCredito = 800_000 * 0.0921;
     const cbsLiquida = cbsDebito - cbsCredito;
     const dasReduzido = sn.das - cbsRetirada;
     const totalHibrido = dasReduzido + cbsLiquida;
@@ -443,13 +443,13 @@ describe("Auditoria tributaria - PDF e snapshots", () => {
       impacto: reforma.comparacao.tipo,
     }, {
       atual: 344600,
-      cbsDebito: 176000,
-      cbsCredito: 70400,
-      cbsLiquida: 105600,
+      cbsDebito: 184200,
+      cbsCredito: 73680,
+      cbsLiquida: 110520,
       ibsDebito: 2000,
       ibsCredito: 800,
       ibsLiquido: 1200,
-      futuro: 378400,
+      futuro: 383320,
       impacto: "AUMENTO",
     });
     assert.deepStrictEqual({
@@ -462,8 +462,8 @@ describe("Auditoria tributaria - PDF e snapshots", () => {
     }, {
       tradicional: 198700,
       dasReduzido: 166093.33,
-      cbsLiquida: 105600,
-      totalHibrido: 271693.33,
+      cbsLiquida: 110520,
+      totalHibrido: 276613.33,
       tipoImpacto: "AUMENTO",
       vencedor: "Simples tradicional",
     });

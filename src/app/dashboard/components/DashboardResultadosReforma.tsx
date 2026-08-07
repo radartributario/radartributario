@@ -110,6 +110,7 @@ export default function DashboardResultadosReforma({ results, onEdit, onGenerate
   }, [confirmed, onGeneratePdf]);
 
   const r = results || {};
+  const reforma2033 = r.tipoComparacao === "PRESUMIDO_ATUAL_VS_REFORMA_2033";
   if (r.error) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -152,7 +153,7 @@ export default function DashboardResultadosReforma({ results, onEdit, onGenerate
   const primaryScenario = showCom ? cenarioCom : showSem ? cenarioSem : futuro;
   const primaryCbs = showCom ? cbsCom : showSem ? cbsSem : cbs;
   const primaryIbs = showCom ? ibsCom : showSem ? ibsSem : ibs;
-  const primaryTitle = showCom ? "Pós-Reforma com benefício" : showSem ? "Pós-Reforma sem benefício" : "Cenário com Reforma";
+  const primaryTitle = reforma2033 ? "Reforma Tributária (2033)" : (showCom ? "Pós-Reforma com benefício" : showSem ? "Pós-Reforma sem benefício" : "Cenário com Reforma");
   const primaryTotal = n(primaryScenario?.total);
   const primaryAliquota = receita > 0 ? primaryTotal / receita * 100 : 0;
   const diffAnual = Math.abs(primaryTotal - atualTotal);
@@ -174,7 +175,14 @@ export default function DashboardResultadosReforma({ results, onEdit, onGenerate
   const compras = n(cbs.creditos && typeof cbs.creditos === "object" ? (cbs.creditos as AnyRecord).compras : 0);
   const icmsPct = receita > compras ? n(atual.icms) / Math.max(receita - compras, 1) * 100 : 0;
 
-  const conclusion = `O ${menorCarga} apresentou menor carga tributária para as premissas informadas.${n(beneficio.pctReducao) > 0 ? " A redução prevista pela LC 214/2025 depende do atendimento dos requisitos legais." : ""}`;
+  const impSubj = reforma2033
+    ? "a implantação definitiva da Reforma Tributária"
+    : "a implantação da Reforma Tributária (CBS e IBS)";
+  const conclusion = Math.abs(diffAnual) < 0.005
+    ? `Com as premissas informadas, ${impSubj} não alteraria significativamente a carga tributária da empresa.`
+    : isAumento
+      ? `Com as premissas informadas, ${impSubj} resultaria em um aumento estimado da carga tributária de R$ ${fmt(diffAnual)} por ano (${fmtPct(diffPct)}).`
+      : `Com as premissas informadas, ${impSubj} resultaria em uma redução estimada da carga tributária de R$ ${fmt(diffAnual)} por ano (${fmtPct(diffPct)}).`;
   const cbsAliq = n(primaryCbs.aliq);
   const ibsAliq = n(primaryIbs.aliq);
   const cbsAliqPadrao = n(primaryCbs.aliqPadrao) || cbsAliq;
@@ -197,13 +205,13 @@ export default function DashboardResultadosReforma({ results, onEdit, onGenerate
     ...(n(atual.icms) > 0 ? [{ title: "Tributos Estaduais", rows: [{ label: "ICMS", value: "" }, { label: "Base", value: `R$ ${fmt(receita)}` }, { label: "Alíquota", value: fmtPct(icmsPct) }, { label: "Débito", value: `R$ ${fmt(n(atual.icms) + compras * icmsPct / 100)}` }, { label: "Crédito", value: `R$ ${fmt(compras * icmsPct / 100)}` }, { label: "ICMS Líquido", value: `R$ ${fmt(n(atual.icms))}`, emphasis: true }] }] : []),
     ...(lpFederalRows.length ? [{ title: "Tributos Federais", rows: lpFederalRows }] : []),
   ];
-  const cbsRows = [...(hasReducao ? [{ label: "Alíquota Legal", value: fmtPct(cbsAliqPadrao) }, { label: "Redução Legal", value: fmtPct(cbsReducao) }, { label: "Alíquota Aplicada", value: fmtPct(cbsAliq) }] : []), { label: "Receita Tributável", value: `R$ ${fmt(receita)}` }, { label: `Débito (${fmtPct(cbsAliq)})`, value: `R$ ${fmt(n(primaryCbs.debito))}` }, { label: "Compras com Crédito", value: `R$ ${fmt(compras)}` }, { label: `Crédito (${fmtPct(cbsAliqCompras)})`, value: `R$ ${fmt(n(primaryCbs.credito))}` }, { label: "CBS Líquida", value: `R$ ${fmt(n(primaryCbs.liquida))}`, emphasis: true }];
-  const ibsRows = [...(hasReducao ? [{ label: "Alíquota Legal", value: fmtPct(ibsAliqPadrao) }, { label: "Redução Legal", value: fmtPct(cbsReducao) }, { label: "Alíquota Aplicada", value: fmtPct(ibsAliq) }] : []), { label: "Receita Tributável", value: `R$ ${fmt(receita)}` }, { label: `Débito (${fmtPct(ibsAliq)})`, value: `R$ ${fmt(n(primaryIbs.debito))}` }, { label: "Compras com Crédito", value: `R$ ${fmt(compras)}` }, { label: `Crédito (${fmtPct(ibsAliqCompras)})`, value: `R$ ${fmt(n(primaryIbs.credito))}` }, { label: "IBS Líquido", value: `R$ ${fmt(n(primaryIbs.liquido))}`, emphasis: true }];
+  const cbsRows = [...(hasReducao ? [{ label: "Alíquota Legal", value: fmtPct(cbsAliqPadrao) }, { label: "Redução Legal", value: fmtPct(cbsReducao) }, { label: "Alíquota Aplicada", value: fmtPct(cbsAliq) }] : []), { label: "Receita Tributável", value: `R$ ${fmt(receita)}` }, { label: `Débito (${fmtPct(cbsAliq)})`, value: `R$ ${fmt(n(primaryCbs.debito))}` }, { label: "Compras elegíveis ao crédito", value: `R$ ${fmt(compras)}` }, { label: `(-) Créditos (${fmtPct(cbsAliqCompras)})`, value: `R$ ${fmt(n(primaryCbs.credito))}` }, { label: "CBS Líquida", value: `R$ ${fmt(n(primaryCbs.liquida))}`, emphasis: true }];
+  const ibsRows = [...(hasReducao ? [{ label: "Alíquota Legal", value: fmtPct(ibsAliqPadrao) }, { label: "Redução Legal", value: fmtPct(cbsReducao) }, { label: "Alíquota Aplicada", value: fmtPct(ibsAliq) }] : []), { label: "Receita Tributável", value: `R$ ${fmt(receita)}` }, { label: `Débito (${fmtPct(ibsAliq)})`, value: `R$ ${fmt(n(primaryIbs.debito))}` }, { label: "Compras elegíveis ao crédito", value: `R$ ${fmt(compras)}` }, { label: `(-) Créditos (${fmtPct(ibsAliqCompras)})`, value: `R$ ${fmt(n(primaryIbs.credito))}` }, { label: "IBS Líquido", value: `R$ ${fmt(n(primaryIbs.liquido))}`, emphasis: true }];
   const postIrpj = n(primaryScenario?.irpj15) || n(atual.irpj15);
   const postIrpjAdic = n(primaryScenario?.irpjAdic) || irpjAdic;
   const postCsll = n(primaryScenario?.csll) || n(atual.csll);
-  const postIss = n(primaryScenario?.iss) || n(atual.iss);
-  const postIcms = n(primaryScenario?.icms) || n(atual.icms);
+  const postIss = reforma2033 ? 0 : (n(primaryScenario?.iss) || n(atual.iss));
+  const postIcms = reforma2033 ? 0 : (n(primaryScenario?.icms) || n(atual.icms));
   const postIpi = n(primaryScenario?.ipi);
   const postCbs = n(primaryScenario?.cbs) || n(primaryCbs.liquida);
   const postIbs = n(primaryScenario?.ibs) || n(primaryIbs.liquido);
@@ -211,13 +219,38 @@ export default function DashboardResultadosReforma({ results, onEdit, onGenerate
 
   return (
     <div className="space-y-6">
+      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5" data-testid="reforma-info-note">
+        <h3 className="text-sm font-extrabold uppercase tracking-[0.14em] text-slate-700">📌 Importante</h3>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">Esta simulação é baseada nas informações fornecidas pelo usuário, nas premissas configuradas no CompareTributo e na legislação vigente da Reforma Tributária (LC 214/2025).</p>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">Os resultados representam uma projeção do cenário tributário e poderão sofrer ajustes em função de regulamentações complementares, alterações legais ou características específicas das operações da empresa.</p>
+      </section>
+
+      {reforma2033 && (
+        <section className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-700 to-indigo-800 text-white p-6 shadow-lg" data-testid="impact-highlight">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-100">Impacto anual da Reforma Tributária</p>
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mt-3">
+            <div>
+              <div className="text-4xl font-extrabold tabular-nums [font-variant-numeric:tabular-nums]">R$ {fmt(diffAnual)}</div>
+              <p className="text-blue-100 mt-1.5 text-sm">Equivalente a <strong className="text-white">R$ {fmt(diffMensal)} por mês</strong></p>
+            </div>
+            <div className="sm:text-right">
+              <span className={`inline-flex items-center rounded-full px-4 py-2 text-lg font-extrabold tabular-nums [font-variant-numeric:tabular-nums] ${Math.abs(diffAnual) < 0.005 ? "bg-white/20 text-white" : isAumento ? "bg-red-500 text-white" : "bg-emerald-400 text-emerald-950"}`}>
+                {Math.abs(diffAnual) < 0.005 ? "0%" : (isAumento ? "+" : "−") + fmtPct(diffPct)}
+              </span>
+              <p className="text-blue-100 mt-1.5 text-sm">{Math.abs(diffAnual) < 0.005 ? "impacto neutro" : isAumento ? "aumento projetado da carga" : "redução projetada da carga"}</p>
+            </div>
+          </div>
+        </section>
+      )}
+
       <ResumoExecutivo
-        card1={{ titulo: "Lucro Presumido atual", total: atualTotal, rotuloTotal: "Total anual estimado", corBorda: menorCarga === "Lucro Presumido atual" ? "border-emerald-200" : "border-blue-200", corFundo: menorCarga === "Lucro Presumido atual" ? "bg-emerald-50" : "bg-blue-50", corTitulo: menorCarga === "Lucro Presumido atual" ? "text-emerald-700" : "text-blue-700", corValor: menorCarga === "Lucro Presumido atual" ? "text-emerald-900" : "text-blue-900", icone: <Receipt className="w-5 h-5 text-blue-600" />, linhas: [{ label: "Média mensal", valor: "R$ " + fmt(atualTotal / 12) }, { label: "Alíquota efetiva", valor: fmtPct(aliquotaAtual), cor: "text-blue-700" }, { label: "ISS considerado", valor: fmtPct(issPct) }] }}
-        card2={{ titulo: primaryTitle, total: primaryTotal, rotuloTotal: "Total anual estimado", corBorda: menorCarga === primaryTitle ? "border-emerald-200" : "border-blue-200", corFundo: menorCarga === primaryTitle ? "bg-emerald-50" : "bg-blue-50", corTitulo: menorCarga === primaryTitle ? "text-emerald-700" : "text-blue-700", corValor: menorCarga === primaryTitle ? "text-emerald-900" : "text-blue-900", icone: <TrendingUp className="w-5 h-5 text-blue-600" />, linhas: [{ label: "Média mensal", valor: "R$ " + fmt(primaryTotal / 12) }, { label: "Alíquota efetiva", valor: fmtPct(primaryAliquota), cor: "text-blue-700" }, { label: "CBS", valor: "R$ " + fmt(n(primaryScenario?.cbs)) }, { label: "IBS", valor: "R$ " + fmt(n(primaryScenario?.ibs)) }] }}
-        cardImpacto={{ isAumento, valorAnual: diffAnual, rotulo: isAumento ? "Diferença anual" : "Economia anual", valorMensal: diffMensal, variacao: diffPct, flagMenorCarga: menorCarga }}
+        titulo={reforma2033 ? "Impacto estimado da Reforma Tributária" : undefined}
+        card1={{ titulo: reforma2033 ? "Carga tributária atual (LP)" : "Lucro Presumido atual", total: atualTotal, rotuloTotal: "Total anual estimado", corBorda: menorCarga === "Lucro Presumido atual" ? "border-emerald-200" : "border-blue-200", corFundo: menorCarga === "Lucro Presumido atual" ? "bg-emerald-50" : "bg-blue-50", corTitulo: menorCarga === "Lucro Presumido atual" ? "text-emerald-700" : "text-blue-700", corValor: menorCarga === "Lucro Presumido atual" ? "text-emerald-900" : "text-blue-900", icone: <Receipt className="w-5 h-5 text-blue-600" />, linhas: [{ label: "Média mensal", valor: "R$ " + fmt(atualTotal / 12) }, { label: "Alíquota efetiva", valor: fmtPct(aliquotaAtual), cor: "text-blue-700" }, { label: "ISS considerado", valor: fmtPct(issPct) }] }}
+        card2={{ titulo: reforma2033 ? "Carga tributária projetada para 2033" : primaryTitle, total: primaryTotal, rotuloTotal: "Total anual estimado", corBorda: menorCarga === primaryTitle ? "border-emerald-200" : "border-blue-200", corFundo: menorCarga === primaryTitle ? "bg-emerald-50" : "bg-blue-50", corTitulo: menorCarga === primaryTitle ? "text-emerald-700" : "text-blue-700", corValor: menorCarga === primaryTitle ? "text-emerald-900" : "text-blue-900", icone: <TrendingUp className="w-5 h-5 text-blue-600" />, linhas: [{ label: "Média mensal", valor: "R$ " + fmt(primaryTotal / 12) }, { label: "Alíquota efetiva", valor: fmtPct(primaryAliquota), cor: "text-blue-700" }, { label: "CBS", valor: "R$ " + fmt(n(primaryScenario?.cbs)) }, { label: "IBS", valor: "R$ " + fmt(n(primaryScenario?.ibs)) }] }}
+        cardImpacto={{ isAumento, valorAnual: diffAnual, rotulo: "Diferença anual", valorMensal: diffMensal, variacao: diffPct, flagMenorCarga: undefined, titulo: "Impacto da Reforma Tributária" }}
       />
 
-      <PremisesSummary rows={[{ label: "Receita", value: `R$ ${fmt(receita)}` }, { label: "Compras", value: `R$ ${fmt(compras)}` }, { label: "CNAE", value: s(premissas.cnaeFormatado) }, { label: "Anexo", value: "Lucro Presumido" }, { label: "Município (ISS)", value: `${s(premissas.municipio)} (${fmtPct(issPct)})` }]} />
+      <PremisesSummary rows={[{ label: "Receita", value: `R$ ${fmt(receita)}` }, { label: "Compras elegíveis ao crédito", value: `R$ ${fmt(compras)}` }, { label: "CNAE", value: s(premissas.cnaeFormatado) }, { label: "Anexo", value: "Lucro Presumido" }, { label: "Município (ISS)", value: `${s(premissas.municipio)} (${fmtPct(issPct)})` }]} />
 
       {(n(beneficio.pctReducao) > 0 || beneficio.potencial === true) && <BenefitSummary beneficio={beneficio} />}
 
@@ -226,7 +259,7 @@ export default function DashboardResultadosReforma({ results, onEdit, onGenerate
         observation="Alíquota Efetiva representa a participação real de cada tributo sobre a receita bruta utilizada na simulação."
         cards={[
           {
-            title: "Lucro Presumido atual",
+            title: reforma2033 ? "Carga tributária atual (LP)" : "Lucro Presumido atual",
             tone: "current",
             items: buildTaxCompositionItems({ scenario: { ...atual, irpjAdic, baseAdic }, revenue: receita, baseIRPJ, baseCSLL, rates: { iss: issPct, icms: icmsPct } }),
             total: atualTotal,
@@ -246,7 +279,13 @@ export default function DashboardResultadosReforma({ results, onEdit, onGenerate
 
       <Graph bars={bars} />
 
-      <CardConclusao isAumento={isAumento} texto={conclusion} vencedor={menorCarga} impactoAnual={diffAnual} impactoPct={diffPct} />
+      <CardConclusao isAumento={isAumento} texto={conclusion} vencedor={undefined} badgeTexto={reforma2033 ? "Cenário projetado" : "Impacto da Reforma"} impactoAnual={diffAnual} impactoPct={diffPct} />
+
+      {reforma2033 && (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-relaxed text-slate-600" data-testid="legal-note">
+          <strong className="text-slate-800">Observação:</strong> Esta simulação representa uma projeção baseada nas informações fornecidas pelo usuário, nas premissas configuradas no CompareTributo e na legislação vigente da Reforma Tributária (LC 214/2025). O impacto apresentado decorre exclusivamente da aplicação das regras previstas na LC 214/2025 sobre as informações fornecidas na simulação.
+        </div>
+      )}
 
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-4">
         <label className="flex items-center gap-3 text-base cursor-pointer">
